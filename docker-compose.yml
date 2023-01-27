@@ -1,0 +1,47 @@
+version: "3.3"
+
+
+services:
+
+  ovpn_server:
+    container_name: ovpn_server
+    image: kylemanna/openvpn
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "1194:1194/udp"
+    environment:
+      - TZ=Europe/Moscow
+    tty: true
+    stdin_open: true
+    hostname: ovpn_server
+    volumes:
+      - ./server/conf:/etc/openvpn
+
+  megabot_vpn_monitor:
+    depends_on:
+      - ovpn_server
+    container_name: ovpn_monitor
+    image: ruimarinho/openvpn-monitor
+    #restart: always
+    ports:
+      - "9001:80"
+    environment:
+      - TZ=Europe/Moscow
+      - OPENVPNMONITOR_DEFAULT_LATITUDE=59.934378
+      - OPENVPNMONITOR_DEFAULT_LONGITUDE=30.335423
+      - OPENVPNMONITOR_DEFAULT_DATETIMEFORMAT="%%d/%%m/%%Y"
+      - OPENVPNMONITOR_DEFAULT_MAPS=True
+      - OPENVPNMONITOR_DEFAULT_MAPSHEIGHT=500
+      - OPENVPNMONITOR_SITES_0_ALIAS=UDP
+      - OPENVPNMONITOR_SITES_0_HOST=megabot_vpn_server
+      - OPENVPNMONITOR_SITES_0_NAME=UDP
+      - OPENVPNMONITOR_SITES_0_PORT=5555
+      #- OPENVPNMONITOR_SITES_0_SHOWDISCONNECT=True
+      #- OPENVPNMONITOR_SITES_1_ALIAS=TCP
+      #- OPENVPNMONITOR_SITES_1_HOST=megabot_vpn_server
+      #- OPENVPNMONITOR_SITES_1_NAME=TCP
+      #- OPENVPNMONITOR_SITES_1_PORT=5555
+    tty: true
+    stdin_open: true
