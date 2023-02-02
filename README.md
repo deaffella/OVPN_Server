@@ -24,6 +24,9 @@ ___
 
     * Положить файлы из директории `server/custom_config/` в `server/conf/`.
     
+    
+    с помощью docker inspect *container_name* посмотреть `NetworkSettings -> Networks -> IPAddress`
+    
     ```
     ip ro add ${VPN_INTERNAL_ADDR} via ${VPN_CONTAINER_INTERNAL_ADDR}
     
