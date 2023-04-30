@@ -1,3 +1,6 @@
+# OVPN_Server
+___
+
 ## Первоначальная настройка 
 ___
 
@@ -23,7 +26,7 @@ ___
 указав внутреннюю подсеть для vpn, а также адрес контейнера с ovpn сервером:
     
    ```bash
-   ip ro add ${VPN_INTERNAL_ADDR} via ${VPN_CONTAINER_INTERNAL_ADDR}
+   # ip ro add ${VPN_INTERNAL_ADDR} via ${VPN_CONTAINER_INTERNAL_ADDR}
     
    #EXAMPLE: 
    ip ro add 192.168.42.0/24 via 172.23.0.2

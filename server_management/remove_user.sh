@@ -3,7 +3,7 @@
 # Скрипт для добавления нового пользователя впн.
 #
 # USAGE:
-# sudo ./remove_user.sh --name MB1
+# sudo bash remove_user.sh --name MB1
 
 
 

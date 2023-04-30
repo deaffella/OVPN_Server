@@ -4,8 +4,8 @@
 #
 # USAGE:
 #                               Внешний порт хоста      IP робота     Порт робота
-# sudo ./forward_port_to_client.sh      SERVER_PORT       ROBOT_VPN_IP    ROBOT_PORT
-# sudo ./forward_port_to_client.sh 32021 192.168.42.202 2021
+# sudo bash forward_port_to_client.sh      SERVER_PORT       ROBOT_VPN_IP    ROBOT_PORT
+# sudo bash forward_port_to_client.sh 32021 192.168.42.202 2021
 
 
 

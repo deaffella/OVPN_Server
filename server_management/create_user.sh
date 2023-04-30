@@ -3,7 +3,7 @@
 # Скрипт для добавления нового пользователя впн.
 #
 # USAGE:
-# sudo ./create_user.sh --name MB1 --ip 192.168.42.201 --forward yes
+# sudo bash create_user.sh --name MB1 --ip 192.168.42.201 --forward yes
 
 
 

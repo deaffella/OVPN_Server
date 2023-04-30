@@ -3,7 +3,7 @@
 # Скрипт для восстановления iptables.
 #
 # USAGE:
-# sudo ./iptables_restore.sh
+# sudo bash iptables_restore.sh
 
 
 
