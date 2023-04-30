@@ -3,15 +3,16 @@
 # Скрипт для создания `openvpn.conf` и `ovpn_env.sh`.
 #
 # USAGE:
-# sudo ./MAKE_CONFIG.sh --ext_ip 217.144.98.104 --subnet 192.168.42.0 --mask 24
+# sudo bash MAKE_CONFIG.sh --ext_ip 217.144.98.104 --subnet 192.168.42.0 --mask 24
 
 if [[ "$EUID" -ne 0 ]]; then
   echo "Please run as root"
   exit
 fi
+clear
 
-export config_file="openvpn.conf"
-export env_file="ovpn_env.sh"
+export config_file="config/openvpn.conf"
+export env_file="config/ovpn_env.sh"
 
 
 # Function to check if the provided flags exist
@@ -103,7 +104,32 @@ function replace_value() {
     sed -i "s/$to_replace_value/$replace_text_value/g" $config_file
 }
 
+# Function to make volume with ovpn configuration
+function make_ovpn_conf_volume() {
+    printf "\n\nNow we will try to pull ovpn docker image and make some magic to configure it!\n\n"
+    local OVPN_VOLUME_NAME="ovpn-data-container"
 
+    printf "[---] Trying to remove existing conf volume with name: $OVPN_VOLUME_NAME\n"
+    docker volume rm $OVPN_VOLUME_NAME
+    printf "[---] Trying to create new conf volume with name: $OVPN_VOLUME_NAME\n"
+    docker volume create --name $OVPN_VOLUME_NAME --opt type=none --opt device=$(pwd)/config --opt o=bind
+    sleep 1
+    printf "\n[---] Trying to run ovpn_genconfig\n"
+    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm kylemanna/openvpn ovpn_genconfig -u udp://$ext_ip_value
+    printf "\n[---] Trying to run ovpn_initpki\n\n"
+    printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
+    In the following dialogs, you will need to
+    enter the AUTHORIZATION PASS PHRASE several times.
+    Come up with a key that you won't be able to forget.
+    It will be used when creating client certificates!\n
+    AUTHORIZATION PASS PHRASE REQUIREMENTS:
+    - length from 4 to 1023;
+    - digits and latin letters;
+    \n\n\n"
+    sleep 4
+    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm -it kylemanna/openvpn ovpn_initpki
+
+}
 
 
 # Save command line arguments
@@ -121,7 +147,6 @@ check_flag_value "--ext_ip" "${args[@]}"
 # Check and validate the subnet address under --subnet flag
 check_flag_value "--subnet" "${args[@]}"
 
-
 # Get the ext_ip value
 ext_ip_value=""
 subnet_value=""
@@ -138,17 +163,16 @@ for i in "${!args[@]}"; do
     fi
 done
 
+printf "\n[---] Copy mock files to \`conf/\`:\n"
+cp openvpn.conf $config_file
+cp ovpn_env.sh $env_file
 
-# Replace __SUBNET in config_file with the value from --subnet flag
-replace_value "$config_file" "__SUBNET" "$subnet_value"
+printf "\n[---] Trying to make changes in conf files:\n - $config_file\n - $env_file\n"
+replace_value "$config_file" "__SUBNET" "$subnet_value"               # Replace __SUBNET in config_file with the value from --subnet flag
+replace_value "$config_file" "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in config_file with the value from --subnet flag
+replace_value "$env_file"    "__SUBNET" "$subnet_value\/$mask_value"  # Replace __SUBNET in $env_file with the value from --mask flag
+replace_value "$env_file"    "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $env_file with the value from --ext_ip flag
+printf "\n[---] Conf files was changed!\n"
 
-# Replace __SUBNET in $env_file with the value from --mask flag
-replace_value "$env_file" "__SUBNET" "$subnet_value\/$mask_value"
 
-# Replace __EXTERNAL_IP in $env_file with the value from --ext_ip flag
-replace_value "$env_file" "__EXTERNAL_IP" "$ext_ip_value"
-
-printf "
-
-Done!
-"
+make_ovpn_conf_volume

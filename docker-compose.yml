@@ -1,5 +1,8 @@
 version: "3.3"
 
+volumes:
+  ovpn-data-container:
+    external: true
 
 services:
 
@@ -17,7 +20,7 @@ services:
     stdin_open: true
     hostname: ovpn_server
     volumes:
-      - ./server/conf:/etc/openvpn
+      - ovpn-data-container:/etc/openvpn
 
   megabot_vpn_monitor:
     depends_on:
@@ -45,3 +48,4 @@ services:
       #- OPENVPNMONITOR_SITES_1_PORT=5555
     tty: true
     stdin_open: true
+
