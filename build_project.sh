@@ -6,52 +6,33 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 clear
 
+export internal_vpn_subnet="192.168.42.0/24"
 
-
-export docker_stack_name="openvpn-server"
-
-# Запоминаем папку запуска
+export docker_stack_name="openvpn"
 export project_dir_path=`pwd`/
-
-# Запоминаем платформу системы
 export OS_PLATFORM=`uname -s`/`uname -m`
 
-
-echo ""
-echo ""
-echo "=============================================="
-echo 'RUNNING "build_project.sh"'
-echo ""
-echo "docker_stack_name: "
-echo ${docker_stack_name}
-echo ""
-echo "project_dir_path: "
-echo ${project_dir_path}
-echo ""
-echo "OS_PLATFORM: "
-echo ${OS_PLATFORM}
-echo "=============================================="
-echo ""
-
-
+printf "\n\n[---] Trying to build stack:
+    docker_stack_name:\t\t${docker_stack_name}
+    project_dir:\t\t${project_dir_path}
+    os platform:\t\t${OS_PLATFORM}"
 sleep 1
 
 cd ${project_dir_path}
-
-# Поднимаем контейнеры из docker-compose.yml
-#COMPOSE_DOCKER_CLI_BUILD=1 \
-#DOCKER_BUILDKIT=1 \
-#DOCKER_DEFAULT_PLATFORM=${OS_PLATFORM} \
-
 COMPOSE_DOCKER_CLI_BUILD=1 \
 DOCKER_BUILDKIT=1 \
 docker-compose -p "${docker_stack_name}" up -d --build
+printf "\n\n[---] BUILD SUCCESSFUL\n"
 
+printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
+    Now we will try to remove old route and create new one.
+    If you are not sure about the correctness of the subnet below,
+    edit it inside this script and run it outside!\n
+    Current subnet is: $internal_vpn_subnet"
+sleep 4
 
-echo ""
-echo ""
-echo "=============================================="
-echo "BUILD SUCCESSFUL"
-echo "=============================================="
-echo ""
-cd ${project_dir_path} && sudo chmod 777 -R *
+printf "\n[---] Trying to delete old route:\n"
+ip route del $internal_vpn_subnet
+
+printf "\n[---] Trying to create new route\n"
+ip ro add $internal_vpn_subnet via `docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ovpn_server`
