@@ -1,7 +1,7 @@
 declare -x OVPN_AUTH=
 declare -x OVPN_CIPHER=
 declare -x OVPN_CLIENT_TO_CLIENT=
-declare -x OVPN_CN=46.254.17.227
+declare -x OVPN_CN=__EXTERNAL_IP                    # CHANGE EXTERNAL IP
 declare -x OVPN_COMP_LZO=0
 declare -x OVPN_DEFROUTE=1
 declare -x OVPN_DEVICE=tun
@@ -20,6 +20,6 @@ declare -x OVPN_PORT=1194
 declare -x OVPN_PROTO=udp
 declare -x OVPN_PUSH=()
 declare -x OVPN_ROUTES=([0]="10.0.0.0/24")
-declare -x OVPN_SERVER=192.168.42.0/24            # CHANGE DEFAULT SUBNET
-declare -x OVPN_SERVER_URL=udp://46.254.17.227
+declare -x OVPN_SERVER=__SUBNET                     # CHANGE DEFAULT SUBNET
+declare -x OVPN_SERVER_URL=udp://__EXTERNAL_IP      # CHANGE EXTERNAL IP
 declare -x OVPN_TLS_CIPHER=
