@@ -3,19 +3,38 @@ ___
 
 1. Клонировать проект.
 
-2. Изменить `DEFAULT SUBNET`, `DEFAULT KEY NAME`, `DEFAULT CRT NAME` внутри `server/custom_config/openvpn.conf`.
+2. Изменить `DEFAULT SUBNET`, `DEFAULT KEY NAME`, `DEFAULT CRT NAME`
+внутри `server/custom_config/openvpn.conf`:
 
-3. Изменить `OVPN_SERVER`, `OVPN_SERVER_URL` внутри `server/custom_config/ovpn_env.sh`.
+  
+   Пример:
+
+   ```
+   server 192.168.42.0 255.255.255.0                   # Заменить `__SUBNET` на внутреннюю подсеть
+   key /etc/openvpn/pki/private/default_priv_key.key   # Изменить имя ключа на `внешний_ip.key`
+   cert /etc/openvpn/pki/issued/default_cert.crt       # Изменить имя cертификата на `внешний_ip.key`
+   ```
+
+3. Изменить `OVPN_CN`, `OVPN_SERVER`, `OVPN_SERVER_URL` внутри `server/custom_config/ovpn_env.sh`.
+
+  
+   Пример:
+
+   ```
+   declare -x OVPN_CN=217.144.98.104
+   declare -x OVPN_SERVER=192.168.42.0/24             # CHANGE DEFAULT SUBNET
+   declare -x OVPN_SERVER_URL=udp://217.144.98.104    # CHANGE EXTERNAL IP
+   ```
 
 3. Инициализировать конфигурационные файлы и сертификаты.
     
     ```
-    docker-compose run --rm kylemanna/openvpn ovpn_genconfig -u udp://${HOST_EXTERNAL_ADDR}
-    docker-compose run --rm kylemanna/openvpn ovpn_initpki
+    docker run --rm kylemanna/openvpn ovpn_genconfig -u udp://${HOST_EXTERNAL_ADDR}
+    docker run --rm kylemanna/openvpn ovpn_initpki
     
     EXAMPLE: 
-    docker-compose run --rm kylemanna/openvpn ovpn_genconfig -u udp://46.254.17.227
-    docker-compose run --rm kylemanna/openvpn ovpn_initpki
+    docker run --rm kylemanna/openvpn ovpn_genconfig -u udp://217.144.98.104
+    docker run --rm kylemanna/openvpn ovpn_initpki
     ```
 
 4. Поднять проект с помощью `./build_project.sh`.
