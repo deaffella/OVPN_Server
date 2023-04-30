@@ -3,27 +3,12 @@ ___
 
 1. Клонировать проект.
 
-2. Изменить `DEFAULT SUBNET`, `DEFAULT KEY NAME`, `DEFAULT CRT NAME`
-внутри `server/custom_config/openvpn.conf`:
-
-  
-   Пример:
+2. Перейти в папку `server/custom_config` и изменить настройки внутри 
+`openvpn.conf` и `ovpn_env.sh` с помощью скрипта `MAKE_CONFIG.sh`:
 
    ```
-   server 192.168.42.0 255.255.255.0                   # Заменить `__SUBNET` на внутреннюю подсеть
-   key /etc/openvpn/pki/private/default_priv_key.key   # Изменить имя ключа на `внешний_ip.key`
-   cert /etc/openvpn/pki/issued/default_cert.crt       # Изменить имя cертификата на `внешний_ip.key`
-   ```
-
-3. Изменить `OVPN_CN`, `OVPN_SERVER`, `OVPN_SERVER_URL` внутри `server/custom_config/ovpn_env.sh`.
-
-  
-   Пример:
-
-   ```
-   declare -x OVPN_CN=217.144.98.104
-   declare -x OVPN_SERVER=192.168.42.0/24             # CHANGE DEFAULT SUBNET
-   declare -x OVPN_SERVER_URL=udp://217.144.98.104    # CHANGE EXTERNAL IP
+   # Пример:
+   sudo ./MAKE_CONFIG.sh --ext_ip 217.144.98.104 --subnet 192.168.42.0 --mask 24
    ```
 
 3. Инициализировать конфигурационные файлы и сертификаты.
