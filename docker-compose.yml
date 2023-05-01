@@ -22,12 +22,12 @@ services:
     volumes:
       - ovpn-data-container:/etc/openvpn
 
-  megabot_vpn_monitor:
+  ovpn_monitor:
     depends_on:
       - ovpn_server
     container_name: ovpn_monitor
-    image: ruimarinho/openvpn-monitor
-    #restart: always
+    image: ruimarinho/openvpn-monitor:d259fadd
+    restart: always
     ports:
       - "9001:80"
     environment:
@@ -38,9 +38,10 @@ services:
       - OPENVPNMONITOR_DEFAULT_MAPS=True
       - OPENVPNMONITOR_DEFAULT_MAPSHEIGHT=500
       - OPENVPNMONITOR_SITES_0_ALIAS=UDP
-      - OPENVPNMONITOR_SITES_0_HOST=megabot_vpn_server
+      - OPENVPNMONITOR_SITES_0_HOST=ovpn_server
       - OPENVPNMONITOR_SITES_0_NAME=UDP
       - OPENVPNMONITOR_SITES_0_PORT=5555
+      - OPENVPNMONITOR_SITES_0_SHOWDISCONNECT=True
       #- OPENVPNMONITOR_SITES_0_SHOWDISCONNECT=True
       #- OPENVPNMONITOR_SITES_1_ALIAS=TCP
       #- OPENVPNMONITOR_SITES_1_HOST=megabot_vpn_server

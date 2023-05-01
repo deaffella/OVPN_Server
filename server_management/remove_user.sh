@@ -26,8 +26,7 @@ shift
 done
 
 
-docker-compose run --rm megabot_vpn_server ovpn_revokeclient $name remove
+docker-compose run --rm ovpn_server ovpn_revokeclient $name remove
 
-rm ./conf/ccd/${name}
-
+rm ../custom_config/config/ccd/${name}
 rm ./clients/${name}.ovpn

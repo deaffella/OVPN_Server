@@ -11,8 +11,8 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 clear
 
-export config_file="config/openvpn.conf"
-export env_file="config/ovpn_env.sh"
+export dst_config_file="openvpn.conf"
+export dst_env_file="ovpn_env.sh"
 
 
 # Function to check if the provided flags exist
@@ -112,7 +112,7 @@ function make_ovpn_conf_volume() {
     printf "[---] Trying to remove existing conf volume with name: $OVPN_VOLUME_NAME\n"
     docker volume rm $OVPN_VOLUME_NAME
     printf "[---] Trying to create new conf volume with name: $OVPN_VOLUME_NAME\n"
-    docker volume create --name $OVPN_VOLUME_NAME --opt type=none --opt device=$(pwd)/config --opt o=bind
+    docker volume create --name $OVPN_VOLUME_NAME --opt type=none --opt device=`pwd`/config --opt o=bind
     sleep 1
     printf "\n[---] Trying to run ovpn_genconfig\n"
     docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm kylemanna/openvpn ovpn_genconfig -u udp://$ext_ip_value
@@ -126,7 +126,7 @@ function make_ovpn_conf_volume() {
     - length from 4 to 1023;
     - digits and latin letters;
     \n\n\n"
-    sleep 4
+    sleep 2
     docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm -it kylemanna/openvpn ovpn_initpki
 
 }
@@ -163,15 +163,15 @@ for i in "${!args[@]}"; do
     fi
 done
 
-printf "\n[---] Copy mock files to \`conf/\`:\n"
-cp openvpn.conf $config_file
-cp ovpn_env.sh $env_file
+printf "\n[---] Copy mock files to \`config/\`:\n"
+cp mock/openvpn.conf $dst_config_file
+cp mock/ovpn_env.sh $dst_env_file
 
-printf "\n[---] Trying to make changes in conf files:\n - $config_file\n - $env_file\n"
-replace_value "$config_file" "__SUBNET" "$subnet_value"               # Replace __SUBNET in config_file with the value from --subnet flag
-replace_value "$config_file" "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in config_file with the value from --subnet flag
-replace_value "$env_file"    "__SUBNET" "$subnet_value\/$mask_value"  # Replace __SUBNET in $env_file with the value from --mask flag
-replace_value "$env_file"    "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $env_file with the value from --ext_ip flag
+printf "\n[---] Trying to make changes in conf files:\n - $config_file\n - $dst_env_file\n"
+replace_value "$dst_config_file" "__SUBNET" "$subnet_value"               # Replace __SUBNET in $dst_config_file with the value from --subnet flag
+replace_value "$dst_config_file" "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $dst_config_file with the value from --subnet flag
+replace_value "$dst_env_file"    "__SUBNET" "$subnet_value\/$mask_value"  # Replace __SUBNET in $dst_env_file with the value from --mask flag
+replace_value "$dst_env_file"    "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $dst_env_file with the value from --ext_ip flag
 printf "\n[---] Conf files was changed!\n"
 
 

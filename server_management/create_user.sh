@@ -30,13 +30,13 @@ shift
 done
 
 # create cert
-docker-compose run --rm megabot_vpn_server easyrsa build-client-full $name nopass
+docker-compose run --rm ovpn_server easyrsa build-client-full $name nopass
 
 # create static client ip
-echo "ifconfig-push $ip 255.255.255.0" > ./conf/ccd/$name
+echo "ifconfig-push $ip 255.255.255.0" > ../custom_config/config/ccd/$name
 
 # copy cert to host
-docker-compose run --rm megabot_vpn_server ovpn_getclient $name > ./clients/$name.ovpn
+docker-compose run --rm ovpn_server ovpn_getclient $name > ./clients/$name.ovpn
 
 # forward ports
 if [[ "$forward" == "yes" ]]; then
