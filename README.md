@@ -59,3 +59,22 @@ ___
    ```bash
     sudo iptables -L -n -t nat
    ```
+
+
+## Возможные проблемы
+___
+
+Если после подключения клиента к серверу пинг с клиента проходит 
+до сервера, но не проходит до 8.8.8.8 (нет интернета, страницы не грузятся), 
+то могут помочь следующие команды:
+
+   ```bash
+   # подсказка от chatgpt
+   sudo iptables -t nat -A POSTROUTING -s 192.168.42.0/24 -o eth0 -j MASQUERADE
+
+   # восстановление iptables из бэкапа
+   cd server_management && sudo bash iptables_restore.sh
+
+   # использование последней команды из скрипта выше
+   sudo iptables -A FORWARD -i eth0 -j ACCEPT
+   ```
