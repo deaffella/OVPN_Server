@@ -15,7 +15,7 @@ export OS_PLATFORM=`uname -s`/`uname -m`
 printf "\n\n[---] Trying to build stack:
     docker_stack_name:\t\t${docker_stack_name}
     project_dir:\t\t${project_dir_path}
-    os platform:\t\t${OS_PLATFORM}"
+    os platform:\t\t${OS_PLATFORM}\n\n"
 sleep 1
 
 cd ${project_dir_path}
@@ -28,7 +28,7 @@ printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
     Now we will try to remove old route and create new one.
     If you are not sure about the correctness of the subnet below,
     edit it inside this script and run it outside!\n
-    Current subnet is: $internal_vpn_subnet"
+    Current subnet is: $internal_vpn_subnet\n\n"
 sleep 4
 
 printf "\n[---] Trying to delete old route:\n"
