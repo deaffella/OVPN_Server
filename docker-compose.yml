@@ -1,5 +1,7 @@
 version: "3.3"
 
+
+# Создается при первичной конфигурации `custom_config/MAKE_CONFIG.sh`
 volumes:
   ovpn-data-container:
     external: true
@@ -29,7 +31,7 @@ services:
     image: ruimarinho/openvpn-monitor:d259fadd
     restart: always
     ports:
-      - "9001:80"
+      - "5000:80"
     environment:
       - TZ=Europe/Moscow
       - OPENVPNMONITOR_DEFAULT_LATITUDE=59.934378
