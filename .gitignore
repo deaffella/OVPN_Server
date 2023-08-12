@@ -1,2 +1,7 @@
 custom_config/openvpn.conf
 custom_config/ovpn_env.sh
+custom_config/config/ccd
+custom_config/config/pki
+custom_config/config/openvpn.conf
+/custom_config/config/ovpn_env.sh
+/server_management/clients/*.ovpn
