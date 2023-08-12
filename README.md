@@ -15,7 +15,13 @@ ___
 
    ```bash
    sudo bash MAKE_CONFIG.sh --ext_ip 217.144.98.104 --subnet 192.168.42.0 --mask 24
-   ```
+   
+   # Для автоматического определения `ext_ip` можно воспользоваться командой:
+   curl -s http://whatismijnip.nl |cut -d " " -f 5
+
+   # Либо использовать комбинированный вариант изменения конфигурациия сервера:
+   sudo bash MAKE_CONFIG.sh --ext_ip `curl -s http://whatismijnip.nl |cut -d " " -f 5` --subnet 192.168.42.0 --mask 24
+   `
    
 3. Вернуться в главную директорию `OVPN_Server`, указать правильную подсеть 
 внутри скрипта `build_project.sh` (по дефолту используется `192.168.42.0/24`) 

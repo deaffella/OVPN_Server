@@ -167,7 +167,7 @@ printf "\n[---] Copy mock files to \`config/\`:\n"
 cp mock/openvpn.conf $dst_config_file
 cp mock/ovpn_env.sh $dst_env_file
 
-printf "\n[---] Trying to make changes in conf files:\n - $config_file\n - $dst_env_file\n"
+printf "\n[---] Trying to make changes in conf files:\n - $dst_config_file\n - $dst_env_file\n"
 replace_value "$dst_config_file" "__SUBNET" "$subnet_value"               # Replace __SUBNET in $dst_config_file with the value from --subnet flag
 replace_value "$dst_config_file" "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $dst_config_file with the value from --subnet flag
 replace_value "$dst_env_file"    "__SUBNET" "$subnet_value\/$mask_value"  # Replace __SUBNET in $dst_env_file with the value from --mask flag
