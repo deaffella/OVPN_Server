@@ -11,8 +11,9 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 clear
 
-export dst_config_file="openvpn.conf"
-export dst_env_file="ovpn_env.sh"
+export dst_config_file="./config/openvpn.conf"
+export dst_env_file="./config/ovpn_env.sh"
+export dev_container_name=ovpn_server_dev
 
 
 # Function to check if the provided flags exist
@@ -115,7 +116,7 @@ function make_ovpn_conf_volume() {
     docker volume create --name $OVPN_VOLUME_NAME --opt type=none --opt device=`pwd`/config --opt o=bind
     sleep 1
     printf "\n[---] Trying to run ovpn_genconfig\n"
-    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm  --name ovpn_server kylemanna/openvpn ovpn_genconfig -u udp://$ext_ip_value
+    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm  --name $dev_container_name kylemanna/openvpn ovpn_genconfig -u udp://$ext_ip_value
     printf "\n[---] Trying to run ovpn_initpki\n\n"
     printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
     In the following dialogs, you will need to
@@ -127,7 +128,7 @@ function make_ovpn_conf_volume() {
     - digits and latin letters;
     \n\n\n"
     sleep 2
-    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm -it --name ovpn_server kylemanna/openvpn ovpn_initpki
+    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm -it --name $dev_container_name kylemanna/openvpn ovpn_initpki
 
 }
 
@@ -163,7 +164,11 @@ for i in "${!args[@]}"; do
     fi
 done
 
-printf "\n[---] Copy mock files to \`config/\`:\n"
+make_ovpn_conf_volume
+
+printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
+    Now we will try to move config files into the docker volume.\n\n"
+printf "[---] Copy mock files to \`./config/\`:\n"
 cp mock/openvpn.conf $dst_config_file
 cp mock/ovpn_env.sh $dst_env_file
 
@@ -175,4 +180,3 @@ replace_value "$dst_env_file"    "__EXTERNAL_IP" "$ext_ip_value"          # Repl
 printf "\n[---] Conf files was changed!\n"
 
 
-make_ovpn_conf_volume

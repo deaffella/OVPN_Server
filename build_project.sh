@@ -24,13 +24,6 @@ DOCKER_BUILDKIT=1 \
 docker-compose -p "${docker_stack_name}" up -d --build
 printf "\n\n[---] BUILD SUCCESSFUL\n"
 
-printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
-    Now we will try to move config files into the docker volume.\n\n"
-cp custom_config/openvpn.conf custom_config/config/openvpn.conf
-printf "\n[---] Copy done.\n
-    Start rebooting ovpn_container to apply new config.\n\n"
-docker restart ovpn_server
-
 docker_container_addr=`docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ovpn_server`
 printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
     Now we will try to remove old route and create new one.
