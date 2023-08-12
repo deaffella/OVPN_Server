@@ -115,7 +115,7 @@ function make_ovpn_conf_volume() {
     docker volume create --name $OVPN_VOLUME_NAME --opt type=none --opt device=`pwd`/config --opt o=bind
     sleep 1
     printf "\n[---] Trying to run ovpn_genconfig\n"
-    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm kylemanna/openvpn ovpn_genconfig -u udp://$ext_ip_value
+    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm  --name ovpn_server kylemanna/openvpn ovpn_genconfig -u udp://$ext_ip_value
     printf "\n[---] Trying to run ovpn_initpki\n\n"
     printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
     In the following dialogs, you will need to
@@ -127,7 +127,7 @@ function make_ovpn_conf_volume() {
     - digits and latin letters;
     \n\n\n"
     sleep 2
-    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm -it kylemanna/openvpn ovpn_initpki
+    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm -it --name ovpn_server kylemanna/openvpn ovpn_initpki
 
 }
 
