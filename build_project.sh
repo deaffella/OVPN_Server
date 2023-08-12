@@ -24,6 +24,7 @@ DOCKER_BUILDKIT=1 \
 docker-compose -p "${docker_stack_name}" up -d --build
 printf "\n\n[---] BUILD SUCCESSFUL\n"
 
+sleep 2
 docker_container_addr=`docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' ovpn_server`
 printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
     Now we will try to remove old route and create new one.
