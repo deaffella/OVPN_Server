@@ -34,10 +34,10 @@ printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
     Docker container internal ip: $docker_container_addr\n\n"
 sleep 2
 
-printf "\n[---] Trying to delete old route:\n"
+printf "\n[---] Trying to delete old route:\nip route del $internal_vpn_subnet\n"
 ip route del $internal_vpn_subnet
 
-printf "\n[---] Trying to create new route\n"
+printf "\n[---] Trying to create new route\nip ro add $internal_vpn_subnet via $docker_container_addr\n\n"
 ip ro add $internal_vpn_subnet via $docker_container_addr
 
 
