@@ -12,6 +12,7 @@ services:
   mongodb:
     container_name: mongodb
     image: mongodb/mongodb-community-server:6.0-ubi8
+    restart: always
     ports:
       - "27017:27017"
     env_file:
@@ -24,9 +25,9 @@ services:
       - mongodb
     image: mongo-express
     container_name: mongo-express
-    restart: always
+    restart: unless-stopped
     ports:
-      - 8081:8081
+      - 4402:8081
     env_file:
       - ./mongodb/credentials.env
     volumes:
@@ -45,8 +46,8 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-      - "1194:1194/udp"
-      - 8082:8000
+      - 1194:1194/udp
+      - 4400:8000
     environment:
       - TZ=Europe/Moscow
     env_file:
@@ -65,7 +66,7 @@ services:
     image: ruimarinho/openvpn-monitor:d259fadd
     restart: always
     ports:
-      - "4400:80"
+      - 4401:80
     environment:
       - TZ=Europe/Moscow
       - OPENVPNMONITOR_DEFAULT_LATITUDE=59.934378
