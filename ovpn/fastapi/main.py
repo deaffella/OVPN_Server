@@ -105,8 +105,8 @@ async def get_users():
         users.append(user)
     return users
 
-@app.get("/get_single_user/")
-async def get_single_user(name: str):
+@app.get("/get_user_info/")
+async def get_user_info(name: str):
     user = await collection.find_one({"name": name})
     if user:
         user["_id"] = str(user["_id"])  # Преобразование ObjectId в строку
