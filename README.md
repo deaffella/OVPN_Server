@@ -10,17 +10,14 @@ ___
    git@gitlab.smart-glow.ru:course_robots/OVPN_Server.git
    ```
 
-2. Перейти в папку `custom_config` и изменить конфигурацию сервера
+2. Перейти в папку `OVPN_Server/ovpn/custom_config` и изменить конфигурацию сервера
 с помощью скрипта `MAKE_CONFIG.sh`:
 
    ```bash
-   sudo bash MAKE_CONFIG.sh --ext_ip 217.144.98.104 --subnet 192.168.42.0 --mask 24
+   sudo bash MAKE_CONFIG.sh --subnet 192.168.42.0 --mask 24
    
    # Для автоматического определения `ext_ip` можно воспользоваться командой:
    curl -s http://whatismijnip.nl |cut -d " " -f 5
-
-   # Либо использовать комбинированный вариант изменения конфигурациия сервера:
-   sudo bash MAKE_CONFIG.sh --ext_ip `curl -s http://whatismijnip.nl |cut -d " " -f 5` --subnet 192.168.42.0 --mask 24
    `
    
 3. Вернуться в главную директорию `OVPN_Server`, указать правильную подсеть 
@@ -32,10 +29,10 @@ ___
    ```
 
 
-## Управление пользователями и сертификатами 
+## Ручная загрузка созданного сертификата на клиента (deprecaded)
 ___
 
-Для каждого созданного пользователя скопировать созданный сертификат из `./clients/` на 
+Для каждого созданного пользователя скопировать созданный сертификат из `OVPN_Server/ovpn/custom_config/config/ccd/` на 
 клиента в директорию `/etc/openvpn/`, изменив расширение сертификата на `.conf`. 
 Пример готового файла на роботе:
     
@@ -45,24 +42,27 @@ ___
    ```
        
     
-### Менеджмент пользователей 
+### Менеджмент пользователей (deprecaded)
 ___
 
 Создать нового пользователя:
     
    ```bash
+   # OVPN_Server/ovpn/server_management/
     sudo ./create_user.sh --name MB1 --ip 192.168.42.201
    ```
 
 Удалить пользователя:
     
    ```bash
+   # OVPN_Server/ovpn/server_management/
     sudo ./remove_user.sh --name MB1
    ```
 
 Проверить существующие проброшенные порты:
     
    ```bash
+   # OVPN_Server/ovpn/server_management/
     sudo iptables -L -n -t nat
    ```
 
@@ -79,7 +79,7 @@ ___
    sudo iptables -t nat -A POSTROUTING -s 192.168.42.0/24 -o eth0 -j MASQUERADE
 
    # восстановление iptables из бэкапа
-   cd server_management && sudo bash iptables_restore.sh
+   cd ovpn/server_management && sudo bash iptables_restore.sh
 
    # использование последней команды из скрипта выше
    sudo iptables -A FORWARD -i eth0 -j ACCEPT
