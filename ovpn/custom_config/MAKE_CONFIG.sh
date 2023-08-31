@@ -133,6 +133,14 @@ function make_ovpn_conf_volume() {
 
 }
 
+function save_password_to_file() {
+    printf "\n\nEnter CA password to save it in file.\n\n"
+    echo "Password: "
+    read ca_pass_to_save
+    echo $ca_pass_to_save > ../fastapi/passfile.secret
+    printf "\nSaved!\n"
+}
+
 
 # Save command line arguments
 args=("$@")
@@ -159,6 +167,7 @@ for i in "${!args[@]}"; do
 done
 
 make_ovpn_conf_volume
+save_password_to_file
 
 printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
     Now we will try to move config files into the docker volume.\n\n"
