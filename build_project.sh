@@ -20,9 +20,6 @@ sleep 1
 
 cd ${project_dir_path}
 
-mkdir -p ${project_dir_path}/mongodb/data
-chmod 777 -R ${project_dir_path}/mongodb/data
-
 COMPOSE_DOCKER_CLI_BUILD=1 \
 DOCKER_BUILDKIT=1 \
 docker-compose -p "${docker_stack_name}" up -d --build
