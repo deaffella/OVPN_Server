@@ -9,3 +9,4 @@ ovpn/custom_config/config/openvpn.conf
 /ovpn/custom_config/config/crl.pem
 
 /server_management/clients/*.ovpn
+/ovpn/fastapi/passfile.secret
