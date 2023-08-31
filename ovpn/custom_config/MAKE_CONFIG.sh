@@ -15,12 +15,11 @@ clear
 export dst_config_dir="./config/"
 export dst_config_file="$dst_config_dir/openvpn.conf"
 export dst_env_file="$dst_config_dir/ovpn_env.sh"
-mkdir -p $dst_config_dir
 export dev_container_name=ovpn_server_dev
 
-export ext_ip_command="curl -s http://whatismijnip.nl |cut -d " " -f 5"
+ext_ip_value=`curl -s http://whatismijnip.nl |cut -d " " -f 5`
 
-
+rm -r ./config/ccd ./config/pki ./config/openvpn* ./config/ovpn* ./config/*.pem
 
 # Function to check if the provided flags exist
 function check_flags() {
@@ -148,8 +147,6 @@ fi
 # Check and validate the subnet address under --subnet flag
 check_flag_value "--subnet" "${args[@]}"
 
-#ext_ip_value=`curl -s http://whatismijnip.nl |cut -d " " -f 5`
-ext_ip_value=`$ext_ip_command`
 subnet_value=""
 mask_value=""
 for i in "${!args[@]}"; do
