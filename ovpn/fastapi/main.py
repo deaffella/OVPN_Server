@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from bson import ObjectId
 import subprocess
+from datetime import datetime
 
 
 DB_NAME = "OVPN"
@@ -52,7 +53,10 @@ async def add_user(name: str, ip: str):
             capture_output=True, text=True, check=True, shell=True)
 
         # Вставка данных в коллекцию
-        result = await collection.insert_one({"name": name, "ip": ip, "certificate": certificate_path})
+        result = await collection.insert_one({"name": name,
+                                              "ip": ip,
+                                              "certificate": certificate_path,
+                                              "created_at": datetime.now()})
         return FileResponse(certificate_path,
                             filename=f"{name}.ovpn",
                             media_type="application/octet-stream",
