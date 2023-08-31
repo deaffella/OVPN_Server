@@ -5,31 +5,9 @@ version: "3.3"
 volumes:
   ovpn-data-container:
     external: true
+  mongodb:
 
 services:
-
-#  fastapi:
-#    container_name: fastapi
-#    image: deaffella/ovpn-fastapi
-#    build:
-#      context: fastapi
-#      dockerfile: Dockerfile
-#    restart: "always"
-#    privileged: true
-#    tty: true
-#    stdin_open: true
-#    ports:
-#      - "8082:80"
-#    environment:
-#      - OVPN_SECRET_PASSWORD=cyberbot
-#    env_file:
-#      - ./fastapi/fastapi.env
-#      - ./mongodb/credentials.env
-#    volumes:
-#      - ./fastapi:/fastapi
-#      - ./ovpn/server_management:/server_management
-##    command: "uvicorn main:app --host 0.0.0.0 --port 80"
-#    entrypoint: 'bash'
 
   mongodb:
     container_name: mongodb
@@ -39,9 +17,11 @@ services:
     env_file:
       - ./mongodb/credentials.env
     volumes:
-      - ./mongodb/data:/data/db
+      - mongodb:/data/db
 
   mongo-express:
+    depends_on:
+      - mongodb
     image: mongo-express
     container_name: mongo-express
     restart: always
@@ -50,9 +30,11 @@ services:
     env_file:
       - ./mongodb/credentials.env
     volumes:
-      - ./mongodb/data:/data/db
+      - mongodb:/data/db
 
   ovpn_server:
+    depends_on:
+      - mongodb
     container_name: ovpn_server
     #image: kylemanna/openvpn
     image: deaffella/ovpn-fastapi
@@ -67,14 +49,14 @@ services:
       - 8082:8000
     environment:
       - TZ=Europe/Moscow
+    env_file:
+      - ./mongodb/credentials.env
     tty: true
     stdin_open: true
     hostname: ovpn_server
     volumes:
       - ovpn-data-container:/etc/openvpn
-      - ./ovpn/fastapi:/fastapi
-#    command: "ovpn_run"
-#    command: "uvicorn /fastapi/main:app --host 0.0.0.0 --port 8000"
+    command: '/bin/bash -c "ovpn_run & uvicorn main:app --host 0.0.0.0 --port 8000"'
 
   ovpn_monitor:
     depends_on:
