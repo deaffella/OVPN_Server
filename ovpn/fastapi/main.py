@@ -25,6 +25,8 @@ app = FastAPI()
 
 @app.post("/add_user/")
 async def add_user(name: str, ip: str):
+    certificate_path = f'/etc/openvpn/ccd/{name}.ovpn'
+
     existing_name = await collection.find_one({"name": name})
     if existing_name:
         raise HTTPException(status_code=400, detail=f"User `{name}` already exists")
@@ -49,13 +51,12 @@ async def add_user(name: str, ip: str):
             [f'echo "ifconfig-push {ip} 255.255.255.0" > /etc/openvpn/ccd/{name}'],
             capture_output=True, text=True, check=True, shell=True)
 
-        user_data = {"name": name, "ip": ip, "certificate": f'/etc/openvpn/ccd/{name}.ovpn'}
-
         # Вставка данных в коллекцию
-        result = await collection.insert_one({"name": name,
-                                              "ip": ip,
-                                              "certificate": f'/etc/openvpn/ccd/{name}.ovpn'})
-        return FileResponse(f'/etc/openvpn/ccd/{name}.ovpn', filename=f"{name}.ovpn")
+        result = await collection.insert_one({"name": name, "ip": ip, "certificate": certificate_path})
+        return FileResponse(certificate_path,
+                            filename=f"{name}.ovpn",
+                            media_type="application/octet-stream",
+                            headers={"Content-Disposition": f"attachment; filename={name}.ovpn"})
     except Exception as e:
         raise HTTPException(status_code=500,
                             detail={'error': str(e)})
@@ -107,7 +108,7 @@ async def get_single_user(name: str):
         user["_id"] = str(user["_id"])  # Преобразование ObjectId в строку
         return user
     else:
-        raise HTTPException(status_code=404, detail=f"User {name} not found")
+        raise HTTPException(status_code=404, detail=f"User `{name}` not found")
 
 @app.get("/get_user_certificate/")
 async def get_user_certificate(name: str):
@@ -115,11 +116,14 @@ async def get_user_certificate(name: str):
     if user:
         certificate_path = user.get("certificate")
         if certificate_path and os.path.exists(certificate_path):
-            return FileResponse(certificate_path)
+            return FileResponse(certificate_path,
+                                filename=f"{name}.ovpn",
+                                media_type="application/octet-stream",
+                                headers={"Content-Disposition": f"attachment; filename={name}.ovpn"})
         else:
-            raise HTTPException(status_code=404, detail=f"Certificate not found for user {name}")
+            raise HTTPException(status_code=404, detail=f"Certificate not found for user `{name}`")
     else:
-        raise HTTPException(status_code=404, detail=f"User {name} not found")
+        raise HTTPException(status_code=404, detail=f"User `{name}` not found")
 
 
 
