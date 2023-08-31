@@ -24,7 +24,7 @@ collection = db[COLLECTION_NAME]
 app = FastAPI()
 
 
-@app.post("/add_user/")
+@app.post("/add_user/", tags=["management"])
 async def add_user(name: str, ip: str):
     certificate_path = f'/etc/openvpn/ccd/{name}.ovpn'
 
@@ -65,7 +65,7 @@ async def add_user(name: str, ip: str):
         raise HTTPException(status_code=500,
                             detail={'error': str(e)})
 
-@app.delete("/delete_user/{name}")
+@app.delete("/delete_user/{name}", tags=["management"])
 async def delete_user(name: str):
     existing_name = await collection.find_one({"name": name})
     if not existing_name:
@@ -97,7 +97,7 @@ async def delete_user(name: str):
         raise HTTPException(status_code=404, detail={'error': f"Cant delete user `{name}`",
                                                      'details': str(e)})
 
-@app.get("/get_users/")
+@app.get("/get_users/", tags=["show"])
 async def get_users():
     users = []
     async for user in collection.find():
@@ -105,7 +105,7 @@ async def get_users():
         users.append(user)
     return users
 
-@app.get("/get_user_info/")
+@app.get("/get_user_info/", tags=["show"])
 async def get_user_info(name: str):
     user = await collection.find_one({"name": name})
     if user:
@@ -114,7 +114,7 @@ async def get_user_info(name: str):
     else:
         raise HTTPException(status_code=404, detail=f"User `{name}` not found")
 
-@app.get("/get_user_certificate/")
+@app.get("/get_user_certificate/", tags=["download"])
 async def get_user_certificate(name: str):
     user = await collection.find_one({"name": name})
     if user:
