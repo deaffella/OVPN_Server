@@ -6,6 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE 1
 ENV PYTHONUNBUFFERED 1
 
 RUN apk add python3
+RUN apk add tzdata
 RUN python3 -m ensurepip
 
 
