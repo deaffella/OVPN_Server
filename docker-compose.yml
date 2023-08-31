@@ -8,14 +8,63 @@ volumes:
 
 services:
 
+#  fastapi:
+#    container_name: fastapi
+#    image: deaffella/ovpn-fastapi
+#    build:
+#      context: fastapi
+#      dockerfile: Dockerfile
+#    restart: "always"
+#    privileged: true
+#    tty: true
+#    stdin_open: true
+#    ports:
+#      - "8082:80"
+#    environment:
+#      - OVPN_SECRET_PASSWORD=cyberbot
+#    env_file:
+#      - ./fastapi/fastapi.env
+#      - ./mongodb/credentials.env
+#    volumes:
+#      - ./fastapi:/fastapi
+#      - ./ovpn/server_management:/server_management
+##    command: "uvicorn main:app --host 0.0.0.0 --port 80"
+#    entrypoint: 'bash'
+
+  mongodb:
+    container_name: mongodb
+    image: mongodb/mongodb-community-server:6.0-ubi8
+    ports:
+      - "27017:27017"
+    env_file:
+      - ./mongodb/credentials.env
+    volumes:
+      - ./mongodb/data:/data/db
+
+  mongo-express:
+    image: mongo-express
+    container_name: mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    env_file:
+      - ./mongodb/credentials.env
+    volumes:
+      - ./mongodb/data:/data/db
+
   ovpn_server:
     container_name: ovpn_server
-    image: kylemanna/openvpn
+    #image: kylemanna/openvpn
+    image: deaffella/ovpn-fastapi
+    build:
+      context: ovpn
+      dockerfile: Dockerfile
     restart: always
     cap_add:
       - NET_ADMIN
     ports:
       - "1194:1194/udp"
+      - 8082:8000
     environment:
       - TZ=Europe/Moscow
     tty: true
@@ -23,6 +72,9 @@ services:
     hostname: ovpn_server
     volumes:
       - ovpn-data-container:/etc/openvpn
+      - ./ovpn/fastapi:/fastapi
+#    command: "ovpn_run"
+#    command: "uvicorn /fastapi/main:app --host 0.0.0.0 --port 8000"
 
   ovpn_monitor:
     depends_on:
@@ -31,7 +83,7 @@ services:
     image: ruimarinho/openvpn-monitor:d259fadd
     restart: always
     ports:
-      - "4000:80"
+      - "4400:80"
     environment:
       - TZ=Europe/Moscow
       - OPENVPNMONITOR_DEFAULT_LATITUDE=59.934378
@@ -44,11 +96,6 @@ services:
       - OPENVPNMONITOR_SITES_0_NAME=UDP
       - OPENVPNMONITOR_SITES_0_PORT=5555
       - OPENVPNMONITOR_SITES_0_SHOWDISCONNECT=True
-      #- OPENVPNMONITOR_SITES_0_SHOWDISCONNECT=True
-      #- OPENVPNMONITOR_SITES_1_ALIAS=TCP
-      #- OPENVPNMONITOR_SITES_1_HOST=megabot_vpn_server
-      #- OPENVPNMONITOR_SITES_1_NAME=TCP
-      #- OPENVPNMONITOR_SITES_1_PORT=5555
     tty: true
     stdin_open: true
 
