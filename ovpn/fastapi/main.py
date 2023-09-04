@@ -65,7 +65,7 @@ async def add_user(name: str, ip: str):
         raise HTTPException(status_code=500,
                             detail={'error': str(e)})
 
-@app.delete("/delete_user/{name}", tags=["management"])
+@app.delete("/delete_user/", tags=["management"])
 async def delete_user(name: str):
     existing_name = await collection.find_one({"name": name})
     if not existing_name:
