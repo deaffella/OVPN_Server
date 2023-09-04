@@ -13,8 +13,8 @@ services:
     container_name: mongodb
     image: mongodb/mongodb-community-server:6.0-ubi8
     restart: always
-    ports:
-      - "27017:27017"
+    #ports:
+    #  - "27017:27017"
     env_file:
       - ./mongodb/credentials.env
     volumes:
@@ -82,3 +82,34 @@ services:
     tty: true
     stdin_open: true
 
+  telegram_bot:
+    depends_on:
+      - mongodb
+    container_name: telegram_bot
+    image: deaffella/ovpn-telegram_bot
+    build:
+      context: telegram_bot
+      dockerfile: Dockerfile
+    restart: always
+    #ports:
+    #  - 1194:1194/udp
+    #  - 4400:8000
+    environment:
+      - TZ=Europe/Moscow
+      - API_URL=ovpn_server:8000
+    env_file:
+      - ./mongodb/credentials.env
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./telegram_bot:/telegram_bot
+      - ovpn-data-container:/ovpn
+    secrets:
+      - tg_bot
+      #command: 'bash'
+    entrypoint: 'bash'
+
+
+secrets:
+  tg_bot:
+    file: telegram_bot/token.env.secret
