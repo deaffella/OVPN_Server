@@ -11,3 +11,4 @@ ovpn/custom_config/config/openvpn.conf
 /server_management/clients/*.ovpn
 /ovpn/fastapi/passfile.secret
 /telegram_bot/token.env.secret
+/telegram_bot/tg_users.json.secret
