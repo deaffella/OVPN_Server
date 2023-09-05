@@ -49,22 +49,28 @@ async def command_start(update: Update, context: CallbackContext):
 
 
 async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    def check_ip(ip: str) -> bool:
+    def check_ip(ip: str or int) -> bool:
         try:
-            ipaddress.ip_address(ip)
+            #ipaddress.ip_address(ip)
+            _ip = int(ip)
+            assert _ip > 1 and _ip < 255, Exception
             return True
-        except ValueError:
-            raise Exception(f'Некорректный IP.')
+        except:
+            return False
 
     text_from_user = str(update.message.text)
     try:
-        user_name, ip = text_from_user.removeprefix('ovpn-add ').split(' ')
-        check_ip(ip)
-        result = requests.post(url=f'http://{API_URL}/add_user/', params={'name': user_name, 'ip': ip})
-        if result.status_code == 200:
-            text_to_reply = f'✅ Пользователь <code>{user_name}</code> добавлен!'
+        user_name, ip = text_from_user.removeprefix('ovpn-add ').split(' ')[:2]
+        if not check_ip(ip):
+            text_to_reply = f'❌ Невозможно добавить пользователя <code>{user_name}</code>!\n\nОшибка:\n<code>{"Некорректный IP!"}</code>'
         else:
-            text_to_reply = f'❌ Невозможно добавить пользователя <code>{user_name}</code>!\n\nОшибка:\n<code>{result_data["detail"]}</code>'
+            new_ip = '.'.join(OVPN_SUBNET.split('.')[:-1] + [str(int(ip))])
+            result = requests.post(url=f'http://{API_URL}/add_user/', params={'name': user_name, 'ip': new_ip})
+            if result.status_code == 200:
+                text_to_reply = f'✅ Пользователь <code>{user_name}</code> добавлен!'
+            else:
+                result_data = result.json()
+                text_to_reply = f'❌ Невозможно добавить пользователя <code>{user_name}</code>!\n\nОшибка:\n<code>{result_data["detail"]}</code>'
 
         await context.bot.send_message(chat_id=update.effective_chat.id,
                                        text=text_to_reply, parse_mode=ParseMode.HTML,
@@ -83,7 +89,7 @@ async def show_all_ovpn_users(update: Update, context: CallbackContext):
                     f"Всего пользователей: 🧑 <code>{len(users_list)}</code>\n" \
                     f"Текущая подсеть: 🌐 <code>{OVPN_SUBNET}</code>\n\n\n" \
                     f"<i>Для добавления и удаления пользователей отправь боту одну из следующих команд:</i>\n\n" \
-                    f"✅ Добавить пользователя:\n<code>ovpn-add USER IP</code>"
+                    f"✅ Добавить пользователя:\n<code>ovpn-add </code><b>USER_NAME   LAST_IP_OCTET</b>"
     if hasattr(update, 'callback_query') and update.callback_query is not None:
         query = update.callback_query
         selected_page = int(str(query.data).split('page=')[-1])
