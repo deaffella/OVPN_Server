@@ -21,7 +21,7 @@ from utils.pagination import OVPNUsersPaginator
 
 _secrets = dotenv_values("token.env.secret")
 TOKEN = _secrets['TOKEN']
-AUTHORIZED_TG_USERS = [str(usr['id']) for usr in json.load(open('./tg_users.json', 'r')).values()]
+AUTHORIZED_TG_USERS = [str(usr['id']) for usr in json.load(open('tg_users.json.secret', 'r')).values()]
 
 API_URL = os.getenv('API_URL')
 OVPN_SUBNET = open('/ovpn/openvpn.conf', 'r').readline().removeprefix('server ').split(' ')[0]
