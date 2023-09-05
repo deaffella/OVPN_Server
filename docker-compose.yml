@@ -26,8 +26,8 @@ services:
     image: mongo-express
     container_name: mongo-express
     restart: unless-stopped
-    ports:
-      - 4402:8081
+    #ports:
+    #  - 4402:8081
     env_file:
       - ./mongodb/credentials.env
     volumes:
@@ -47,7 +47,7 @@ services:
       - NET_ADMIN
     ports:
       - 1194:1194/udp
-      - 4400:8000
+      #- 4400:8000                  # FastAPI port
     environment:
       - TZ=Europe/Moscow
     env_file:
@@ -85,15 +85,13 @@ services:
   telegram_bot:
     depends_on:
       - mongodb
+      - ovpn_server
     container_name: telegram_bot
     image: deaffella/ovpn-telegram_bot
     build:
       context: telegram_bot
       dockerfile: Dockerfile
     restart: always
-    #ports:
-    #  - 1194:1194/udp
-    #  - 4400:8000
     environment:
       - TZ=Europe/Moscow
       - API_URL=ovpn_server:8000
@@ -105,11 +103,14 @@ services:
       - ./telegram_bot:/telegram_bot
       - ovpn-data-container:/ovpn
     secrets:
-      - tg_bot
-      #command: 'bash'
-    entrypoint: 'bash'
+      - tg_bot_token
+      - tg_bot_authorized_users
+    command: 'python3 main.py'
+    #entrypoint: 'bash'
 
 
 secrets:
-  tg_bot:
+  tg_bot_token:
     file: telegram_bot/token.env.secret
+  tg_bot_authorized_users:
+    file: telegram_bot/tg_users.json.secret
