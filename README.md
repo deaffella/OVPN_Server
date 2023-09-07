@@ -7,7 +7,7 @@ ___
 1. Клонировать проект.
 
    ```bash
-   git@gitlab.smart-glow.ru:course_robots/OVPN_Server.git
+   git clone git@gitlab.smart-glow.ru:course_robots/OVPN_Server.git
    ```
 
 2. Перейти в папку `OVPN_Server/ovpn/custom_config` и изменить конфигурацию сервера
