@@ -15,7 +15,12 @@ ___
 раз ввести passphrase для easy-rsa.
 
    ```bash
-   sudo bash MAKE_CONFIG.sh --subnet 192.168.42.0 --mask 24
+
+   # Вручную задать внешний ip 217.144.98.10
+   sudo bash MAKE_CONFIG.sh --ext_ip 217.144.98.10 --subnet 192.168.42.0 --mask 24
+
+   # Автоматически определить ip
+   sudo bash MAKE_CONFIG.sh --ext_ip `curl -s http://whatismijnip.nl |cut -d " " -f 5` --subnet 192.168.42.0 --mask 24
    
    # Для автоматического определения `ext_ip` можно воспользоваться командой:
    curl -s http://whatismijnip.nl |cut -d " " -f 5
@@ -26,15 +31,15 @@ ___
 
    ```bash
    # Токен для телеграм бота
-   echo "TOKEN=токен_от_телеграм_бота > token.env.secret"
+   echo "TOKEN=токен_от_телеграм_бота" > token.env.secret
    
    # Список авторизованных пользователей телеграм бота с содержанием вида: 
-   # {
-   #  "0": {
-   #    "name": "some_tg_username",
-   #    "id":   "269796099"
-   #  }
-   # }
+   {
+    "0": {
+      "name": "some_tg_username",
+      "id":   "269796099"
+    }
+   }
    nano tg_users.json.secret   
    ```
 

@@ -3,7 +3,8 @@
 # Скрипт для создания `openvpn.conf` и `ovpn_env.sh`.
 #
 # USAGE:
-# sudo bash MAKE_CONFIG.sh --subnet 192.168.42.0 --mask 24
+# sudo bash MAKE_CONFIG.sh --ext_ip 217.144.98.10 --subnet 192.168.42.0 --mask 24
+# sudo bash MAKE_CONFIG.sh --ext_ip `curl -s http://whatismijnip.nl |cut -d " " -f 5` --subnet 192.168.42.0 --mask 24
 
 
 if [[ "$EUID" -ne 0 ]]; then
@@ -17,17 +18,21 @@ export dst_config_file="$dst_config_dir/openvpn.conf"
 export dst_env_file="$dst_config_dir/ovpn_env.sh"
 export dev_container_name=ovpn_server_dev
 
-ext_ip_value=`curl -s http://whatismijnip.nl |cut -d " " -f 5`
+#ext_ip_value=`curl -s http://whatismijnip.nl |cut -d " " -f 5`
 
 rm -r ./config/ccd ./config/pki ./config/openvpn* ./config/ovpn* ./config/*.pem
 
 # Function to check if the provided flags exist
 function check_flags() {
+    local ext_ip_flag=false
     local subnet_flag=false
     local mask_flag=false
 
     for arg in "$@"; do
         case "$arg" in
+            --ext_ip)
+                ext_ip_flag=true
+                ;;
             --subnet)
                 subnet_flag=true
                 ;;
@@ -39,12 +44,13 @@ function check_flags() {
         esac
     done
 
-    if [[ $subnet_flag == true && $mask_flag == true ]]; then
+    if [[ $ext_ip_flag == true && $subnet_flag == true && $mask_flag == true ]]; then
         return 0
     else
         return 1
     fi
 }
+
 
 # Function to validate IP address and subnet format
 function valid_ip_or_subnet() {
@@ -147,17 +153,25 @@ args=("$@")
 
 # Check if all flags are present
 if ! check_flags "${args[@]}"; then
-    echo "Error: Missing one or more flags. Please provide --subnet, and --mask."
+    echo "Error: Missing one or more flags. Please provide --ext_ip, --subnet, and --mask."
     exit 1
 fi
 
+# Check and validate the IP address under --ext_ip flag
+check_flag_value "--ext_ip" "${args[@]}"
 
 # Check and validate the subnet address under --subnet flag
 check_flag_value "--subnet" "${args[@]}"
 
+
+# Get the ext_ip value
+ext_ip_value=""
 subnet_value=""
 mask_value=""
 for i in "${!args[@]}"; do
+    if [[ "${args[$i]}" == "--ext_ip" ]]; then
+        ext_ip_value="${args[$((i + 1))]}"
+    fi
     if [[ "${args[$i]}" == "--subnet" ]]; then
         subnet_value="${args[$((i + 1))]}"
     fi
@@ -165,6 +179,7 @@ for i in "${!args[@]}"; do
         mask_value="${args[$((i + 1))]}"
     fi
 done
+
 
 make_ovpn_conf_volume
 save_password_to_file
