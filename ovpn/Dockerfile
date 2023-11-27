@@ -12,9 +12,9 @@ RUN python3 -m ensurepip
 
 # install dependencies
 RUN pip3 install --upgrade pip
-RUN pip3 install --no-cache-dir fastapi uvicorn
-RUN pip3 install --no-cache-dir pymongo
-RUN pip3 install --no-cache-dir motor
+COPY requirements.txt /opt/requirements.txt
+RUN pip3 install -r /opt/requirements.txt
+
 
 COPY fastapi /fastapi
 WORKDIR /fastapi
