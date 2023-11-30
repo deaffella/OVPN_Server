@@ -10,6 +10,8 @@ import asyncio
 
 
 
+
+
 class Database_Sync():
     """
     Класс для взаимодействия с базой данных Postgres.
@@ -41,10 +43,7 @@ class Database_Sync():
         self.check_tables = check_tables
 
         self.con_status = False
-
-        self.connection = self.connect()
-        if self.check_tables:
-            self.create_tables(verbose=verbose)
+        self.connection = None
 
 
     def connect(self, verbose=False):
@@ -61,14 +60,10 @@ class Database_Sync():
             self.con_status = True
             if verbose:
                 print(f'\nDATABASE CONNECTION ESTABLISHED: {self.ip}:{self.port}\n\n')
-
-            self.connection = connection
-            return self.connection
         except Exception as e:
             if verbose:
                 print(f'\n\n\nCANT CONNECT TO DB: {self.ip}:{self.port}\n\n')
             self.con_status = False
-            return False
 
     def disconnect(self):
         """
@@ -78,8 +73,6 @@ class Database_Sync():
         try:
             self.con_status = False
             self.connection.close()
-            # print('\nDATABASE DISCONNECTED: {}:{}\n\n'.format(self.db_ip,
-            #                                                   self.db_port))
         except Exception as e:
             print(f"CAN'T DISCONNECT FROM DB: {self.ip}:{self.port}\n\n'")
 
@@ -89,7 +82,6 @@ class Database_Sync():
         :param table_name: Имя таблицы.
         :return:
         """
-        self.connect()
         sql_request = f"""SELECT EXISTS(
                         SELECT * 
                         FROM information_schema.tables 
@@ -99,7 +91,6 @@ class Database_Sync():
         cur = self.connection.cursor()
         cur.execute(sql_request)
         table_exist = cur.fetchone()
-        self.disconnect()
         return table_exist[0]
 
     def create_tables(self, verbose: bool = False):
@@ -125,12 +116,9 @@ class Database_Sync():
         :return:
         """
         try:
-            #self.connect()
             cur = self.connection.cursor()
             cur.execute(sql_request)
             self.connection.commit()
-            #self.disconnect()
-
             if verbose:
                 print("[OK]\tcreate table")
         except Exception as e:
@@ -140,27 +128,22 @@ class Database_Sync():
 
     def __drop_table(self, table_name: str, verbose: bool = True):
         try:
-            self.connect()
             sql_request = f"DROP TABLE IF EXISTS public.{table_name}"
             cur = self.connection.cursor()
             cur.execute(sql_request)
             self.connection.commit()
-            self.disconnect()
-
             if verbose:
                 print(f"[OK]\tdrop table {table_name}")
         except Exception as e:
-
             if verbose:
                 print(f'[ERROR]\tcant drop table {table_name}\n{e}')
             pass
 
     def wipe_database(self, verbose: bool = True):
-        # self.__drop_table(table_name='features', verbose=verbose)
-        # self.__drop_table(table_name='images', verbose=verbose)
-        # self.__drop_table(table_name='persons', verbose=verbose)
-        self.create_tables(verbose=verbose)
-
+        self.__drop_table(table_name='certificates', verbose=verbose)
+        self.__drop_table(table_name='ovpn_users', verbose=verbose)
+        self.__drop_table(table_name='servers', verbose=verbose)
+        # self.create_tables(verbose=verbose)
 
     def __create_servers_table(self, verbose: bool = False):
         """
@@ -355,7 +338,7 @@ class Database_Sync():
 
 
 
-class Database():
+class Database_Async():
     """
     Класс для взаимодействия с базой данных Postgres.
     """
@@ -428,11 +411,6 @@ class Database():
                         WHERE 
                           table_schema = 'public' AND
                           table_name = '{table_name}');"""
-        # cur = self.connection.cursor()
-        # cur.execute(sql_request)
-        # table_exist = cur.fetchone()
-        # self.disconnect()
-        # return table_exist[0]
         return bool(await self.connection.fetchval(sql_request))
 
     async def create_tables(self, verbose: bool = True):
@@ -661,47 +639,49 @@ class Database():
 
 
 
-
-
-async def main():
-    db = Database()
-    await db.connect()
-    await db.create_tables()
-    await db.wipe_database()
-
-    print('servers', await db.get_servers_list())
-    print()
-    # print('add', await db.add_server(name='test_1', external_ip='8.8.8.8', external_port=1194, internal_ip='192.168.11.1', internal_port=1194, internal_subnet='192.168.33.0', creation_date=datetime.datetime.now(), monitor_port=4401, country="RU"))
-    print()
-    # print('delete', await db.delete_server(server_id=8))
-    # print()
-    # print('servers', await db.get_servers_list())
-    print()
-
-    print('users', await db.get_ovpn_users_list())
-    print()
-    print('add', await db.add_ovpn_user(nickname='user_1', registration_date=datetime.datetime.now(), first_name=None, last_name=None, telegram_id=111))
-    print()
-    print('delete', await db.delete_ovpn_user(ovpn_user_id=1))
-    print()
-    print('users', await db.get_ovpn_users_list())
-    print()
-
-    print('certificates', await db.get_certificates_list())
-    print()
-    print('add', await db.add_certificate(server_id=9, ovpn_user_id=1, ip='192.168.22.22', file_path='/qwe/qwe', creation_date=datetime.datetime.now(), expiration_date=datetime.datetime.now()))
-    print('add', await db.add_certificate(server_id=9, ovpn_user_id=1, ip='192.168.22.11', file_path='/qwe/qwe', creation_date=datetime.datetime.now(), expiration_date=datetime.datetime.now()))
-    print()
-    print('delete', await db.delete_certificate(certificate_id=2))
-    print('delete', await db.delete_certificate(certificate_id=3))
-    print()
-    print('certificates', await db.get_certificates_list())
-    print()
-
-    await db.disconnect()
-
-
-
-
 if __name__ == '__main__':
+    async def main():
+        db = Database()
+        await db.connect()
+        await db.create_tables()
+        await db.wipe_database()
+
+        print('servers', await db.get_servers_list())
+        print()
+        # print('add', await db.add_server(name='test_1', external_ip='8.8.8.8', external_port=1194, internal_ip='192.168.11.1', internal_port=1194, internal_subnet='192.168.33.0', creation_date=datetime.datetime.now(), monitor_port=4401, country="RU"))
+        print()
+        # print('delete', await db.delete_server(server_id=8))
+        # print()
+        # print('servers', await db.get_servers_list())
+        print()
+
+        print('users', await db.get_ovpn_users_list())
+        print()
+        print('add',
+              await db.add_ovpn_user(nickname='user_1', registration_date=datetime.datetime.now(), first_name=None,
+                                     last_name=None, telegram_id=111))
+        print()
+        print('delete', await db.delete_ovpn_user(ovpn_user_id=1))
+        print()
+        print('users', await db.get_ovpn_users_list())
+        print()
+
+        print('certificates', await db.get_certificates_list())
+        print()
+        print('add', await db.add_certificate(server_id=9, ovpn_user_id=1, ip='192.168.22.22', file_path='/qwe/qwe',
+                                              creation_date=datetime.datetime.now(),
+                                              expiration_date=datetime.datetime.now()))
+        print('add', await db.add_certificate(server_id=9, ovpn_user_id=1, ip='192.168.22.11', file_path='/qwe/qwe',
+                                              creation_date=datetime.datetime.now(),
+                                              expiration_date=datetime.datetime.now()))
+        print()
+        print('delete', await db.delete_certificate(certificate_id=2))
+        print('delete', await db.delete_certificate(certificate_id=3))
+        print()
+        print('certificates', await db.get_certificates_list())
+        print()
+
+        await db.disconnect()
+
+
     asyncio.run(main())
