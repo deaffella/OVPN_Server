@@ -18,13 +18,12 @@ class Database_Sync():
     """
 
     def __init__(self,
-                 ip:            str = os.getenv('POSTGRES_HOST'),
+                 host:          str = os.getenv('POSTGRES_HOST'),
                  port:          str = os.getenv('POSTGRES_PORT'),
                  db_name:       str = os.getenv('POSTGRES_DB'),
                  user:          str = os.getenv('POSTGRES_USER'),
                  password:      str = os.getenv('POSTGRES_PASSWORD'),
-                 check_tables:  bool = True,
-                 verbose:       bool = False):
+                 check_tables:  bool = True):
         """
         Инициализирует клиент базы данных.
         :param ip:        Адрес бд.
@@ -35,7 +34,7 @@ class Database_Sync():
         :param check_tables: Если True, проверяет наличие таблиц и создает их в случае их отсутствия.
         :param verbose:      Если True, принтует логи о выполнении команд.
         """
-        self.ip = ip
+        self.host = host
         self.port = port
         self.db_name = db_name
         self.user = user
@@ -52,17 +51,17 @@ class Database_Sync():
         :return:
         """
         try:
-            connection = psycopg2.connect(host=self.ip,
-                                          port=self.port,
-                                          database=self.db_name,
-                                          user=self.user,
-                                          password=self.password)
+            self.connection = psycopg2.connect(host=self.host,
+                                               port=self.port,
+                                               database=self.db_name,
+                                               user=self.user,
+                                               password=self.password)
             self.con_status = True
             if verbose:
-                print(f'\nDATABASE CONNECTION ESTABLISHED: {self.ip}:{self.port}\n\n')
+                print(f'\nDATABASE CONNECTION ESTABLISHED: {self.host}:{self.port}\n\n')
         except Exception as e:
             if verbose:
-                print(f'\n\n\nCANT CONNECT TO DB: {self.ip}:{self.port}\n\n')
+                print(f'\n\n\nCANT CONNECT TO DB: {self.host}:{self.port}\n\n')
             self.con_status = False
 
     def disconnect(self):
@@ -74,7 +73,7 @@ class Database_Sync():
             self.con_status = False
             self.connection.close()
         except Exception as e:
-            print(f"CAN'T DISCONNECT FROM DB: {self.ip}:{self.port}\n\n'")
+            print(f"CAN'T DISCONNECT FROM DB: {self.host}:{self.port}\n\n'")
 
     def check_table_exist(self, table_name: str) -> bool:
         """
@@ -154,9 +153,9 @@ class Database_Sync():
         CREATE TABLE IF NOT EXISTS public.servers
         (
             id bigserial,
-            name character varying(255) NOT NULL,
+            name character varying(255) NOT NULL UNIQUE,
             external_ip inet NOT NULL,
-            external_port bigint NOT NULL,
+            external_port bigint NOT NULL UNIQUE,
             internal_ip inet NOT NULL,
             internal_port bigint DEFAULT 1194,
             internal_subnet inet NOT NULL,
@@ -179,10 +178,10 @@ class Database_Sync():
         CREATE TABLE IF NOT EXISTS public.ovpn_users
         (
             id bigserial,
-            nickname character varying(255) NOT NULL,
+            nickname character varying(255) NOT NULL UNIQUE,
             first_name character varying(255),
             last_name character varying,
-            telegram_id bigint,
+            telegram_id bigint UNIQUE,
             registration_date timestamp with time zone NOT NULL,
             PRIMARY KEY (id)
         );
@@ -203,7 +202,7 @@ class Database_Sync():
             id bigserial,
             server_id bigint NOT NULL,
             ovpn_user_id bigint NOT NULL,
-            ip inet NOT NULL,
+            ip inet NOT NULL UNIQUE,
             file_path character varying NOT NULL,
             creation_date timestamp with time zone NOT NULL,
             expiration_date timestamp with time zone NOT NULL,
@@ -211,12 +210,12 @@ class Database_Sync():
             CONSTRAINT ovpn_user_id FOREIGN KEY (ovpn_user_id)
                 REFERENCES public.ovpn_users (id) MATCH SIMPLE
                 ON UPDATE NO ACTION
-                ON DELETE NO ACTION
+                ON DELETE CASCADE
                 NOT VALID,
             CONSTRAINT server_id FOREIGN KEY (server_id)
                 REFERENCES public.servers (id) MATCH SIMPLE
                 ON UPDATE NO ACTION
-                ON DELETE NO ACTION
+                ON DELETE CASCADE
                 NOT VALID
         );
         
@@ -228,8 +227,8 @@ class Database_Sync():
 
     """SERVERS========================================================================================================"""
     def get_servers_list(self) -> List[Tuple[int, str, str, int, str, str, str, datetime.datetime, int]]:
-        sql_request = (f"select (id, name, external_ip, external_port, internal_ip, internal_port, "
-                       f"internal_subnet, creation_date, monitor_port) "
+        sql_request = (f"select id, name, external_ip, external_port, internal_ip, internal_port, "
+                       f"internal_subnet, creation_date, monitor_port "
                        f"from public.servers order by id ASC")
         cur = self.connection.cursor()
         cur.execute(sql_request)
@@ -251,18 +250,28 @@ class Database_Sync():
                        f"'{internal_port}', '{internal_subnet}', '{creation_date}', {monitor_port}) "
                        f"RETURNING id, name, external_ip, external_port, internal_ip, "
                        f"internal_port, internal_subnet, creation_date, monitor_port;")
-        cur = self.connection.cursor()
-        result = cur.execute(sql_request)
-        self.connection.commit()
+        try:
+            cur = self.connection.cursor()
+            cur.execute(sql_request)
+        except Exception as e:
+            raise e
+        finally:
+            self.connection.commit()
+        result = cur.fetchall()
         return result
 
     def delete_server(self, server_id: int) -> Tuple[int, str, str, int, str, str, str, datetime.datetime, int]:
         sql_request = (f"DELETE from public.servers WHERE id = {server_id} "
                        f"RETURNING id, name, external_ip, external_port, internal_ip, "
                        f"internal_port, internal_subnet, creation_date, monitor_port;")
-        cur = self.connection.cursor()
-        result = cur.execute(sql_request)
-        self.connection.commit()
+        try:
+            cur = self.connection.cursor()
+            cur.execute(sql_request)
+        except Exception as e:
+            raise e
+        finally:
+            self.connection.commit()
+        result = cur.fetchall()
         return result
 
 
@@ -285,16 +294,27 @@ class Database_Sync():
                        f"values ('{nickname}', '{first_name}', '{last_name}', '{telegram_id}', '{registration_date}') "
                        f"RETURNING id, nickname, first_name, last_name, telegram_id, registration_date")
         cur = self.connection.cursor()
-        result = cur.execute(sql_request)
-        self.connection.commit()
+        try:
+            cur = self.connection.cursor()
+            cur.execute(sql_request)
+        except Exception as e:
+            raise e
+        finally:
+            self.connection.commit()
+        result = cur.fetchall()
         return result
 
     def delete_ovpn_user(self, ovpn_user_id: int) -> Tuple[int, str, str, str, int, datetime.datetime]:
         sql_request = (f"DELETE from public.ovpn_users WHERE id = {ovpn_user_id} "
                        f"RETURNING id, nickname, first_name, last_name, telegram_id, registration_date;")
-        cur = self.connection.cursor()
-        result = cur.execute(sql_request)
-        self.connection.commit()
+        try:
+            cur = self.connection.cursor()
+            cur.execute(sql_request)
+        except Exception as e:
+            raise e
+        finally:
+            self.connection.commit()
+        result = cur.fetchall()
         return result
 
 
@@ -321,18 +341,28 @@ class Database_Sync():
                        f"'{expiration_date}') "
                        f"RETURNING id, server_id, ovpn_user_id, ip, file_path, "
                        f"creation_date, expiration_date;")
-        cur = self.connection.cursor()
-        result = cur.execute(sql_request)
-        self.connection.commit()
+        try:
+            cur = self.connection.cursor()
+            cur.execute(sql_request)
+        except Exception as e:
+            raise e
+        finally:
+            self.connection.commit()
+        result = cur.fetchall()
         return result
 
     def delete_certificate(self, certificate_id: int) -> Tuple[int, int, int, str, str, datetime.datetime, datetime.datetime]:
         sql_request = (f"DELETE from public.certificates WHERE id = {certificate_id} "
                        f"RETURNING id, server_id, ovpn_user_id, ip, file_path, "
                        f"creation_date, expiration_date;")
-        cur = self.connection.cursor()
-        result = cur.execute(sql_request)
-        self.connection.commit()
+        try:
+            cur = self.connection.cursor()
+            cur.execute(sql_request)
+        except Exception as e:
+            raise e
+        finally:
+            self.connection.commit()
+        result = cur.fetchall()
         return result
 
 
@@ -344,7 +374,7 @@ class Database_Async():
     """
 
     def __init__(self,
-                 ip:            str = os.getenv('POSTGRES_HOST'),
+                 host:          str = os.getenv('POSTGRES_HOST'),
                  port:          str = os.getenv('POSTGRES_PORT'),
                  db_name:       str = os.getenv('POSTGRES_DB'),
                  user:          str = os.getenv('POSTGRES_USER'),
@@ -358,7 +388,7 @@ class Database_Async():
         :param user:      Имя пользователя.
         :param password:  Пароль.
         """
-        self.ip = ip
+        self.host = host
         self.port = port
         self.db_name = db_name
         self.user = user
@@ -374,18 +404,18 @@ class Database_Async():
         :return:
         """
         try:
-            self.connection: asyncpg.Connection = await asyncpg.connect(host=self.ip,
-                                                                   port=self.port,
-                                                                   database=self.db_name,
-                                                                   user=self.user,
-                                                                   password=self.password)
+            self.connection: asyncpg.Connection = await asyncpg.connect(host=self.host,
+                                                                        port=self.port,
+                                                                        database=self.db_name,
+                                                                        user=self.user,
+                                                                        password=self.password)
 
             self.con_status = True
             if verbose:
-                print(f'\nDATABASE CONNECTION ESTABLISHED: {self.ip}:{self.port}\n\n')
+                print(f'\nDATABASE CONNECTION ESTABLISHED: {self.host}:{self.port}\n\n')
         except Exception as e:
             if verbose:
-                print(f'\n\n\nCANT CONNECT TO DB: {self.ip}:{self.port}\n\n')
+                print(f'\n\n\nCANT CONNECT TO DB: {self.host}:{self.port}\n\n')
             self.con_status = False
 
     async def disconnect(self):
@@ -397,7 +427,7 @@ class Database_Async():
             self.con_status = False
             await self.connection.close()
         except Exception as e:
-            print(f"CAN'T DISCONNECT FROM DB: {self.ip}:{self.port}\n\n'")
+            print(f"CAN'T DISCONNECT FROM DB: {self.host}:{self.port}\n\n'")
 
     async def check_table_exist(self, table_name: str) -> bool:
         """
@@ -528,12 +558,12 @@ class Database_Async():
             CONSTRAINT ovpn_user_id FOREIGN KEY (ovpn_user_id)
                 REFERENCES public.ovpn_users (id) MATCH SIMPLE
                 ON UPDATE NO ACTION
-                ON DELETE NO ACTION
+                ON DELETE CASCADE
                 NOT VALID,
             CONSTRAINT server_id FOREIGN KEY (server_id)
                 REFERENCES public.servers (id) MATCH SIMPLE
                 ON UPDATE NO ACTION
-                ON DELETE NO ACTION
+                ON DELETE CASCADE
                 NOT VALID
         );
         
