@@ -5,40 +5,42 @@ version: "3.3"
 volumes:
   ovpn-data-container:
     external: true
-  mongodb:
+  postgres-data-container:
+  pgadmin-data-container:
 
 services:
 
-  mongodb:
-    container_name: mongodb
-    image: mongodb/mongodb-community-server:6.0-ubi8
+  postgres:
+    container_name: postgres
+    image: postgres:14
+    hostname: postgres
     restart: always
-    #ports:
-    #  - "27017:27017"
+    environment:
+      - TZ=Europe/Moscow
     env_file:
-      - ./mongodb/credentials.env
+      - ./dev.env
+    ports:
+      - 5432:5432
     volumes:
-      - mongodb:/data/db
+      - postgres-data-container:/var/lib/postgresql/data
 
-  mongo-express:
-    depends_on:
-      - mongodb
-    image: mongo-express
-    container_name: mongo-express
-    restart: unless-stopped
-    #ports:
-    #  - 4402:8081
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    hostname: pgadmin
     env_file:
-      - ./mongodb/credentials.env
+      - ./dev.env
+    ports:
+      - 8999:80
     volumes:
-      - mongodb:/data/db
+      - pgadmin-data-container:/var/lib/pgadmin
+    restart: unless-stopped
 
   ovpn_server:
     depends_on:
-      - mongodb
+      - postgres
     container_name: ovpn_server
-    #image: kylemanna/openvpn
-    image: deaffella/ovpn-fastapi
+    image: deaffella/ovpn-server
     build:
       context: ovpn
       dockerfile: Dockerfile
@@ -47,17 +49,45 @@ services:
       - NET_ADMIN
     ports:
       - 1194:1194/udp
-      #- 4400:8000                  # FastAPI port
     environment:
       - TZ=Europe/Moscow
     env_file:
-      - ./mongodb/credentials.env
+      - ./dev.env
     tty: true
     stdin_open: true
     hostname: ovpn_server
     volumes:
-      - ovpn-data-container:/etc/openvpn
-    command: '/bin/bash -c "ovpn_run & uvicorn main:app --host 0.0.0.0 --port 8000"'
+      #- ./ovpn:/ovpn
+      - ./server_management:/server_management
+    #  - ovpn-data-container:/etc/openvpn
+    #command: '/bin/bash -c "ovpn_run & uvicorn main:app --host 0.0.0.0 --port 8000"'
+    entrypoint: 'bash'
+
+  fastapi:
+    depends_on:
+      - postgres
+    container_name: fastapi
+    image: deaffella/ovpn-fastapi
+    build:
+      context: fastapi
+      dockerfile: Dockerfile
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 4400:8000                  # FastAPI port
+    environment:
+      - TZ=Europe/Moscow
+    env_file:
+      - ./dev.env
+    tty: true
+    stdin_open: true
+    hostname: fastapi
+    volumes:
+      - ./fastapi:/fastapi
+    #  - ovpn-data-container:/etc/openvpn
+    #command: '/bin/bash -c "ovpn_run & uvicorn main:app --host 0.0.0.0 --port 8000"'
+    entrypoint: 'bash'
 
   ovpn_monitor:
     depends_on:
@@ -82,31 +112,31 @@ services:
     tty: true
     stdin_open: true
 
-  telegram_bot:
-    depends_on:
-      - mongodb
-      - ovpn_server
-    container_name: telegram_bot
-    image: deaffella/ovpn-telegram_bot
-    build:
-      context: telegram_bot
-      dockerfile: Dockerfile
-    restart: always
-    environment:
-      - TZ=Europe/Moscow
-      - API_URL=ovpn_server:8000
-    env_file:
-      - ./mongodb/credentials.env
-    tty: true
-    stdin_open: true
-    volumes:
-      - ./telegram_bot:/telegram_bot
-      - ovpn-data-container:/ovpn
-    secrets:
-      - tg_bot_token
-      - tg_bot_authorized_users
-    command: 'python3 main.py'
-    #entrypoint: 'bash'
+#  telegram_bot:
+#    depends_on:
+#      - postgres
+#      - ovpn_server
+#    container_name: telegram_bot
+#    image: deaffella/ovpn-telegram_bot
+#    build:
+#      context: telegram_bot
+#      dockerfile: Dockerfile
+#    restart: always
+#    environment:
+#      - TZ=Europe/Moscow
+#      - API_URL=ovpn_server:8000
+#    env_file:
+#      - ./dev.env
+#    tty: true
+#    stdin_open: true
+#    volumes:
+#      - ./telegram_bot:/telegram_bot
+#      - ovpn-data-container:/ovpn
+#    secrets:
+#      - tg_bot_token
+#      - tg_bot_authorized_users
+#    command: 'python3 main.py'
+#    #entrypoint: 'bash'
 
 
 secrets:
