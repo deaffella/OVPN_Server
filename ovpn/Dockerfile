@@ -16,8 +16,8 @@ COPY requirements.txt /opt/requirements.txt
 RUN pip3 install -r /opt/requirements.txt
 
 
-COPY fastapi /fastapi
-WORKDIR /fastapi
+COPY . /server_management
+WORKDIR /server_management
 
 RUN ln -sf /proc/1/fd/1 /var/log/test.log
 CMD ["bash"]
