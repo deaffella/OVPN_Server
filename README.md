@@ -164,6 +164,10 @@ ___
    
    # Добавить маскарад (пакеты между разными сетями будут получать в заголовках адреса гейтвеев) 
    iptables -t nat -A POSTROUTING -o tun0 -j MASQUERADE
+
+
+   # !!! - сохранить маршруты и применять при загрузке машины
+   sudo apt-get install iptables-persistent
    ```
    
 
