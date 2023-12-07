@@ -149,16 +149,30 @@ ___
 
    ```bash
    # На хост_1 
-   
-   # Разрешить пакеты из ovpn сети в стороннюю 
+
+   # 192.168.2.0/24 - локальная сеть машины, на которой крутится OVPN клиент
    iptables -A FORWARD -i tun0 -o ens18 -s 192.168.2.0/24 -j ACCEPT
-   # Разрешить пакеты из сторонней в ovpn сеть 
    iptables -A FORWARD -i ens18 -o tun0 -s 192.168.2.0/24 -j ACCEPT
+
+   # 192.168.42.0/24 - OVPN сеть
+   iptables -A FORWARD -i tun0 -o ens18 -s 192.168.42.0/24 -j ACCEPT
+   iptables -A FORWARD -i ens18 -o tun0 -s 192.168.42.0/24 -j ACCEPT
+
+   # 192.168.1.0/24 - локальная сеть машины, на которой крутится OVPN сервер
+   iptables -A FORWARD -i tun0 -o ens18 -s 192.168.1.0/24 -j ACCEPT
+   iptables -A FORWARD -i ens18 -o tun0 -s 192.168.1.0/24 -j ACCEPT
    
    # Добавить маскарад (пакеты между разными сетями будут получать в заголовках адреса гейтвеев) 
    iptables -t nat -A POSTROUTING -o tun0 -j MASQUERADE
    ```
    
+
+   ```bash
+   # Внутри OVPN сертификата   |   192.168.1.0/24 - локальная сеть машины, на которой крутится OVPN сервер
+
+   #redirect-gateway def1
+   route 192.168.1.0 255.255.255.0
+   ```
 
 ___
 ## Полезные команды
