@@ -161,6 +161,10 @@ ___
    # 192.168.1.0/24 - локальная сеть машины, на которой крутится OVPN сервер
    iptables -A FORWARD -i tun0 -o ens18 -s 192.168.1.0/24 -j ACCEPT
    iptables -A FORWARD -i ens18 -o tun0 -s 192.168.1.0/24 -j ACCEPT
+
+   # 172.2.0.57/24 - впн сеть Mikrotik, к которому подключен хост_1
+   iptables -A FORWARD -i tun0 -o ens18 -s 172.2.0.57/24 -j ACCEPT
+   iptables -A FORWARD -i ens18 -o tun0 -s 172.2.0.57/24 -j ACCEPT
    
    # Добавить маскарад (пакеты между разными сетями будут получать в заголовках адреса гейтвеев) 
    iptables -t nat -A POSTROUTING -o tun0 -j MASQUERADE
@@ -168,6 +172,7 @@ ___
 
    # !!! - сохранить маршруты и применять при загрузке машины
    sudo apt-get install iptables-persistent
+   netfilter-persistent save
    ```
    
 
