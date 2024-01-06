@@ -112,6 +112,11 @@ class OVPN_Docker_Client(DockerClient):
     def __init__(self):
         DockerClient.__init__(self)
 
+    def remove_ovpn_server_container(self, name: str):
+        self.container_kill(container_name=name)
+        self.client.api.remove_container(container=name, force=True)
+
+
     def create_ovpn_server_container(self,
                                      name: str,
                                      ports: List[Tuple[int, int]] = [(1194, 1194),],
@@ -144,24 +149,24 @@ class OVPN_Docker_Client(DockerClient):
                                 container_name: str,
                                 cert_name: str,
                                 ip: str):
-        create_cert_result = self.container_exec(container_name=container_name,
-                                                 cmd=f'easyrsa build-client-full {cert_name} nopass')
-        create_cert_result = self.container_exec(container_name=container_name,
-                                                 cmd=f'bash -c "echo ' + f"'ifconfig-push {ip} 255.255.255.0'" + f' > /etc/openvpn/ccd/{cert_name}"')
-        create_cert_result = self.container_exec(container_name=container_name,
-                                                 cmd=f'bash -c "ovpn_getclient {cert_name} > ./clients/{cert_name}.ovpn"')
+        self.container_exec(container_name=container_name,
+                            cmd=f'easyrsa build-client-full {cert_name} nopass')
+        self.container_exec(container_name=container_name,
+                            cmd=f'bash -c "echo ' + f"'ifconfig-push {ip} 255.255.255.0'" + f' > /etc/openvpn/ccd/{cert_name}"')
+        self.container_exec(container_name=container_name,
+                            cmd=f'bash -c "ovpn_getclient {cert_name} > ./clients/{cert_name}.ovpn"')
 
     def ovpn_certificate_remove(self, container_name: str, cert_name: str):
-        remove_cert_result = self.container_exec(container_name=container_name,
-                                                 cmd=f'cp -f "$EASYRSA_PKI/crl.pem" "$OPENVPN/crl.pem"')
-        remove_cert_result = self.container_exec(container_name=container_name,
-                                                 cmd=f'chmod 644 "$OPENVPN/crl.pem"')
-        remove_cert_result = self.container_exec(container_name=container_name,
-                                                 cmd=f'rm /etc/openvpn/ccd/{cert_name}')
-        remove_cert_result = self.container_exec(container_name=container_name,
-                                                 cmd=f'rm /etc/openvpn/ccd/{cert_name}.ovpn')
-        remove_cert_result = self.container_exec(container_name=container_name,
-                                                 cmd=f'rm ./clients/{cert_name}.ovpn')
+        self.container_exec(container_name=container_name,
+                            cmd=f'cp -f "$EASYRSA_PKI/crl.pem" "$OPENVPN/crl.pem"')
+        self.container_exec(container_name=container_name,
+                            cmd=f'chmod 644 "$OPENVPN/crl.pem"')
+        self.container_exec(container_name=container_name,
+                            cmd=f'rm /etc/openvpn/ccd/{cert_name}')
+        self.container_exec(container_name=container_name,
+                            cmd=f'rm /etc/openvpn/ccd/{cert_name}.ovpn')
+        self.container_exec(container_name=container_name,
+                            cmd=f'rm ./clients/{cert_name}.ovpn')
 
 
 
@@ -180,7 +185,9 @@ if __name__=='__main__':
     # client.create_ovpn_server_container(name=name)
     # client.configure_ovpn_server_container(name=name, ext_ip=ext_ip, subnet=subnet)
     # client.ovpn_certificate_create(container_name=name, cert_name='5', ip='192.168.51.20')
-    client.ovpn_certificate_remove(container_name=name, cert_name='3')
+    # client.ovpn_certificate_remove(container_name=name, cert_name='5')
+
+    client.remove_ovpn_server_container(name=name)
 
 
 
