@@ -3,8 +3,7 @@
 # Скрипт для создания `openvpn.conf` и `ovpn_env.sh`.
 #
 # USAGE:
-# sudo bash MAKE_CONFIG.sh --ext_ip 217.144.98.10 --subnet 192.168.42.0 --mask 24
-# sudo bash MAKE_CONFIG.sh --ext_ip `curl -s http://whatismijnip.nl |cut -d " " -f 5` --subnet 192.168.42.0 --mask 24
+# sudo bash configure_server.sh --ext_ip `curl -s http://whatismijnip.nl |cut -d " " -f 5` --subnet 192.168.51.0 --mask 24
 
 
 if [[ "$EUID" -ne 0 ]]; then
@@ -13,10 +12,13 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 clear
 
+cd ./custom_config/
+
 export dst_config_dir="./config/"
 export dst_config_file="$dst_config_dir/openvpn.conf"
 export dst_env_file="$dst_config_dir/ovpn_env.sh"
-export dev_container_name=ovpn_server_dev
+
+openvpn_pem_pass=openvpn_pem_pass
 
 #ext_ip_value=`curl -s http://whatismijnip.nl |cut -d " " -f 5`
 
@@ -114,37 +116,9 @@ function replace_value() {
 
 # Function to make volume with ovpn configuration
 function make_ovpn_conf_volume() {
-    printf "\n\nNow we will try to pull ovpn docker image and make some magic to configure it!\n\n"
-    local OVPN_VOLUME_NAME="ovpn-data-container"
-
-    printf "[---] Trying to remove existing conf volume with name: $OVPN_VOLUME_NAME\n"
-    docker volume rm $OVPN_VOLUME_NAME
-    printf "[---] Trying to create new conf volume with name: $OVPN_VOLUME_NAME\n"
-    docker volume create --name $OVPN_VOLUME_NAME --opt type=none --opt device=`pwd`/config --opt o=bind
-    sleep 1
-    printf "\n[---] Trying to run ovpn_genconfig\n"
-    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm  --name $dev_container_name kylemanna/openvpn ovpn_genconfig -u udp://$ext_ip_value
-    printf "\n[---] Trying to run ovpn_initpki\n\n"
-    printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
-    In the following dialogs, you will need to
-    enter the AUTHORIZATION PASS PHRASE several times.
-    Come up with a key that you won't be able to forget.
-    It will be used when creating client certificates!\n
-    AUTHORIZATION PASS PHRASE REQUIREMENTS:
-    - length from 4 to 1023;
-    - digits and latin letters;
-    \n\n\n"
-    sleep 2
-    docker run -v $OVPN_VOLUME_NAME:/etc/openvpn --rm -it --name $dev_container_name kylemanna/openvpn ovpn_initpki
-
-}
-
-function save_password_to_file() {
-    printf "\n\nEnter CA password to save it in file.\n\n"
-    echo "Password: "
-    read ca_pass_to_save
-    echo $ca_pass_to_save > ../fastapi/passfile.secret
-    printf "\nSaved!\n"
+    ovpn_genconfig -u udp://$ext_ip_value
+    echo $openvpn_pem_pass > ../fastapi/passfile.secret
+    (echo $openvpn_pem_pass; echo $openvpn_pem_pass; echo $openvpn_pem_pass) | ovpn_initpki nopass
 }
 
 
@@ -180,9 +154,7 @@ for i in "${!args[@]}"; do
     fi
 done
 
-
 make_ovpn_conf_volume
-save_password_to_file
 
 printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
     Now we will try to move config files into the docker volume.\n\n"
@@ -196,5 +168,4 @@ replace_value "$dst_config_file" "__EXTERNAL_IP" "$ext_ip_value"          # Repl
 replace_value "$dst_env_file"    "__SUBNET" "$subnet_value\/$mask_value"  # Replace __SUBNET in $dst_env_file with the value from --mask flag
 replace_value "$dst_env_file"    "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $dst_env_file with the value from --ext_ip flag
 printf "\n[---] Conf files was changed!\n"
-
 

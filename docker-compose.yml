@@ -4,7 +4,7 @@ version: "3.3"
 # Создается при первичной конфигурации `custom_config/MAKE_CONFIG.sh`
 volumes:
   ovpn-data-container:
-    external: true
+  #  external: true
   postgres-data-container:
   pgadmin-data-container:
 
@@ -36,33 +36,6 @@ services:
       - pgadmin-data-container:/var/lib/pgadmin
     restart: unless-stopped
 
-  ovpn_server:
-    depends_on:
-      - postgres
-    container_name: ovpn_server
-    image: deaffella/ovpn-server
-    build:
-      context: ovpn
-      dockerfile: Dockerfile
-    restart: always
-    cap_add:
-      - NET_ADMIN
-    ports:
-      - 1194:1194/udp
-    environment:
-      - TZ=Europe/Moscow
-    env_file:
-      - ./dev.env
-    tty: true
-    stdin_open: true
-    hostname: ovpn_server
-    volumes:
-      #- ./ovpn:/ovpn
-      - ./server_management:/server_management
-    #  - ovpn-data-container:/etc/openvpn
-    #command: '/bin/bash -c "ovpn_run & uvicorn main:app --host 0.0.0.0 --port 8000"'
-    entrypoint: 'bash'
-
   fastapi:
     depends_on:
       - postgres
@@ -84,63 +57,90 @@ services:
     stdin_open: true
     hostname: fastapi
     volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
       - ./fastapi:/fastapi
+      #- ovpn-data-container:/etc/openvpn
+    #command: '/bin/bash -c "ovpn_run & uvicorn main:app --host 0.0.0.0 --port 8000"'
+    entrypoint: 'bash'
+
+  ovpn_server:
+    depends_on:
+      - postgres
+    container_name: ovpn_server
+    image: deaffella/ovpn:server-1.0
+    build:
+      context: ovpn
+      dockerfile: Dockerfile
+    restart: always
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 1194:1194/udp
+    environment:
+      - TZ=Europe/Moscow
+    env_file:
+      - ./dev.env
+    tty: true
+    stdin_open: true
+    hostname: ovpn_server
+    volumes:
+      - ./ovpn:/ovpn
     #  - ovpn-data-container:/etc/openvpn
     #command: '/bin/bash -c "ovpn_run & uvicorn main:app --host 0.0.0.0 --port 8000"'
     entrypoint: 'bash'
 
-  ovpn_monitor:
-    depends_on:
-      - ovpn_server
-    container_name: ovpn_monitor
-    image: ruimarinho/openvpn-monitor:d259fadd
-    restart: always
-    ports:
-      - 4401:80
-    environment:
-      - TZ=Europe/Moscow
-      - OPENVPNMONITOR_DEFAULT_LATITUDE=59.934378
-      - OPENVPNMONITOR_DEFAULT_LONGITUDE=30.335423
-      - OPENVPNMONITOR_DEFAULT_DATETIMEFORMAT="%%d/%%m/%%Y"
-      - OPENVPNMONITOR_DEFAULT_MAPS=True
-      - OPENVPNMONITOR_DEFAULT_MAPSHEIGHT=500
-      - OPENVPNMONITOR_SITES_0_ALIAS=UDP
-      - OPENVPNMONITOR_SITES_0_HOST=ovpn_server
-      - OPENVPNMONITOR_SITES_0_NAME=UDP
-      - OPENVPNMONITOR_SITES_0_PORT=5555
-      - OPENVPNMONITOR_SITES_0_SHOWDISCONNECT=True
-    tty: true
-    stdin_open: true
-
-#  telegram_bot:
+#  ovpn_monitor:
 #    depends_on:
-#      - postgres
 #      - ovpn_server
-#    container_name: telegram_bot
-#    image: deaffella/ovpn-telegram_bot
-#    build:
-#      context: telegram_bot
-#      dockerfile: Dockerfile
+#    container_name: ovpn_monitor
+#    image: ruimarinho/openvpn-monitor:d259fadd
 #    restart: always
+#    ports:
+#      - 4401:80
 #    environment:
 #      - TZ=Europe/Moscow
-#      - API_URL=ovpn_server:8000
-#    env_file:
-#      - ./dev.env
+#      - OPENVPNMONITOR_DEFAULT_LATITUDE=59.934378
+#      - OPENVPNMONITOR_DEFAULT_LONGITUDE=30.335423
+#      - OPENVPNMONITOR_DEFAULT_DATETIMEFORMAT="%%d/%%m/%%Y"
+#      - OPENVPNMONITOR_DEFAULT_MAPS=True
+#      - OPENVPNMONITOR_DEFAULT_MAPSHEIGHT=500
+#      - OPENVPNMONITOR_SITES_0_ALIAS=UDP
+#      - OPENVPNMONITOR_SITES_0_HOST=ovpn_server
+#      - OPENVPNMONITOR_SITES_0_NAME=UDP
+#      - OPENVPNMONITOR_SITES_0_PORT=5555
+#      - OPENVPNMONITOR_SITES_0_SHOWDISCONNECT=True
 #    tty: true
 #    stdin_open: true
-#    volumes:
-#      - ./telegram_bot:/telegram_bot
-#      - ovpn-data-container:/ovpn
-#    secrets:
-#      - tg_bot_token
-#      - tg_bot_authorized_users
-#    command: 'python3 main.py'
-#    #entrypoint: 'bash'
-
-
-secrets:
-  tg_bot_token:
-    file: telegram_bot/token.env.secret
-  tg_bot_authorized_users:
-    file: telegram_bot/tg_users.json.secret
+#
+##  telegram_bot:
+##    depends_on:
+##      - postgres
+##      - ovpn_server
+##    container_name: telegram_bot
+##    image: deaffella/ovpn-telegram_bot
+##    build:
+##      context: telegram_bot
+##      dockerfile: Dockerfile
+##    restart: always
+##    environment:
+##      - TZ=Europe/Moscow
+##      - API_URL=ovpn_server:8000
+##    env_file:
+##      - ./dev.env
+##    tty: true
+##    stdin_open: true
+##    volumes:
+##      - ./telegram_bot:/telegram_bot
+##      - ovpn-data-container:/ovpn
+##    secrets:
+##      - tg_bot_token
+##      - tg_bot_authorized_users
+##    command: 'python3 main.py'
+##    #entrypoint: 'bash'
+#
+#
+#secrets:
+#  tg_bot_token:
+#    file: telegram_bot/token.env.secret
+#  tg_bot_authorized_users:
+#    file: telegram_bot/tg_users.json.secret
