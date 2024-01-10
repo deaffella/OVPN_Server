@@ -12,17 +12,20 @@ if [[ "$EUID" -ne 0 ]]; then
 fi
 clear
 
-cd ./custom_config/
+cd "/ovpn/custom_config"
 
-export dst_config_dir="./config/"
+
+export mock_config_dir="/ovpn/custom_config/mock/"
+export dst_config_dir="/ovpn/custom_config/config/"
+export ovpn_config_dir='/etc/openvpn/'
 export dst_config_file="$dst_config_dir/openvpn.conf"
 export dst_env_file="$dst_config_dir/ovpn_env.sh"
+
 
 openvpn_pem_pass=openvpn_pem_pass
 
 #ext_ip_value=`curl -s http://whatismijnip.nl |cut -d " " -f 5`
 
-rm -r ./config/ccd ./config/pki ./config/openvpn* ./config/ovpn* ./config/*.pem
 
 # Function to check if the provided flags exist
 function check_flags() {
@@ -117,10 +120,82 @@ function replace_value() {
 # Function to make volume with ovpn configuration
 function make_ovpn_conf_volume() {
     ovpn_genconfig -u udp://$ext_ip_value
-    echo $openvpn_pem_pass > ../fastapi/passfile.secret
+    echo $openvpn_pem_pass > /tmp/passfile.secret
     (echo $openvpn_pem_pass; echo $openvpn_pem_pass; echo $openvpn_pem_pass) | ovpn_initpki nopass
 }
 
+
+function configure() {
+    # Check and validate the IP address under --ext_ip flag
+    check_flag_value "--ext_ip" "${args[@]}"
+
+    # Check and validate the subnet address under --subnet flag
+    check_flag_value "--subnet" "${args[@]}"
+
+    # Get the ext_ip value
+    ext_ip_value=""
+    subnet_value=""
+    mask_value=""
+    for i in "${!args[@]}"; do
+        if [[ "${args[$i]}" == "--ext_ip" ]]; then
+            ext_ip_value="${args[$((i + 1))]}"
+        fi
+        if [[ "${args[$i]}" == "--subnet" ]]; then
+            subnet_value="${args[$((i + 1))]}"
+        fi
+        if [[ "${args[$i]}" == "--mask" ]]; then
+            mask_value="${args[$((i + 1))]}"
+        fi
+    done
+
+    make_ovpn_conf_volume
+
+    printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
+        Now we will try to move config files into the docker volume.\n\n"
+    printf "[---] Copy mock files to \`./config/\`:\n"
+    cp $mock_config_dir/openvpn.conf $mock_config_dir/ovpn_env.sh $dst_config_dir/
+
+
+    printf "\n[---] Trying to make changes in conf files:\n - $dst_config_file\n - $dst_env_file\n"
+    replace_value "$dst_config_file" "__SUBNET" "$subnet_value"               # Replace __SUBNET in $dst_config_file with the value from --subnet flag
+    replace_value "$dst_config_file" "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $dst_config_file with the value from --subnet flag
+    replace_value "$dst_env_file"    "__SUBNET" "$subnet_value\/$mask_value"  # Replace __SUBNET in $dst_env_file with the value from --mask flag
+    replace_value "$dst_env_file"    "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $dst_env_file with the value from --ext_ip flag
+    printf "\n[---] Conf files was changed!\n"
+
+    cp $dst_config_file $dst_env_file $ovpn_config_dir
+}
+
+
+function check_file_exist() {
+    local file="$1"
+    if [ -e "$file" ]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
+function check_configs_exist_or_run_configure() {
+    local file1="$1"
+    local file2="$2"
+
+    result_file1=$(check_file_exist "$file1")
+    result_file2=$(check_file_exist "$file2")
+
+    if [ "$result_file1" == "true" ] && [ "$result_file2" == "true" ]; then
+        cp $file1 $file2 /etc/openvpn/
+        ovpn_run
+    else
+        configure
+        cp $file1 $file2 /etc/openvpn/
+    fi
+}
+
+
+function MAIN() {
+    check_configs_exist_or_run_configure "$dst_config_file" "$dst_env_file"
+}
 
 # Save command line arguments
 args=("$@")
@@ -131,41 +206,4 @@ if ! check_flags "${args[@]}"; then
     exit 1
 fi
 
-# Check and validate the IP address under --ext_ip flag
-check_flag_value "--ext_ip" "${args[@]}"
-
-# Check and validate the subnet address under --subnet flag
-check_flag_value "--subnet" "${args[@]}"
-
-
-# Get the ext_ip value
-ext_ip_value=""
-subnet_value=""
-mask_value=""
-for i in "${!args[@]}"; do
-    if [[ "${args[$i]}" == "--ext_ip" ]]; then
-        ext_ip_value="${args[$((i + 1))]}"
-    fi
-    if [[ "${args[$i]}" == "--subnet" ]]; then
-        subnet_value="${args[$((i + 1))]}"
-    fi
-    if [[ "${args[$i]}" == "--mask" ]]; then
-        mask_value="${args[$((i + 1))]}"
-    fi
-done
-
-make_ovpn_conf_volume
-
-printf "\n[!!!] WARNING! READ THIS MESSAGE PLEASE!\n
-    Now we will try to move config files into the docker volume.\n\n"
-printf "[---] Copy mock files to \`./config/\`:\n"
-cp mock/openvpn.conf $dst_config_file
-cp mock/ovpn_env.sh $dst_env_file
-
-printf "\n[---] Trying to make changes in conf files:\n - $dst_config_file\n - $dst_env_file\n"
-replace_value "$dst_config_file" "__SUBNET" "$subnet_value"               # Replace __SUBNET in $dst_config_file with the value from --subnet flag
-replace_value "$dst_config_file" "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $dst_config_file with the value from --subnet flag
-replace_value "$dst_env_file"    "__SUBNET" "$subnet_value\/$mask_value"  # Replace __SUBNET in $dst_env_file with the value from --mask flag
-replace_value "$dst_env_file"    "__EXTERNAL_IP" "$ext_ip_value"          # Replace __EXTERNAL_IP in $dst_env_file with the value from --ext_ip flag
-printf "\n[---] Conf files was changed!\n"
-
+MAIN

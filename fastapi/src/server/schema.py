@@ -7,7 +7,7 @@ import typing
 
 class AddServer(BaseModel):
     name: str = Field(..., example="ServerName", description="Unique name for server.")
-    external_ip: str = Field(..., example="241.16.33.72", description="White external server ip.")
+    external_ip: str = Field(..., example="188.243.151.68", description="White external server ip.")
     external_port: int = Field(..., example="1194", description="External ovpn port.")
     internal_ip: str = Field(..., example="192.168.42.1", description="Internal server ip.")
     internal_port: int = Field(..., example="1194", description="Internal ovpn port.")

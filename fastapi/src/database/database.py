@@ -8,22 +8,18 @@ import asyncpg
 import asyncio
 
 
-
-
-
-
 class Database_Sync():
     """
     Класс для взаимодействия с базой данных Postgres.
     """
 
     def __init__(self,
-                 host:          str = os.getenv('POSTGRES_HOST'),
-                 port:          str = os.getenv('POSTGRES_PORT'),
-                 db_name:       str = os.getenv('POSTGRES_DB'),
-                 user:          str = os.getenv('POSTGRES_USER'),
-                 password:      str = os.getenv('POSTGRES_PASSWORD'),
-                 check_tables:  bool = True):
+                 host: str = os.getenv('POSTGRES_HOST'),
+                 port: str = os.getenv('POSTGRES_PORT'),
+                 db_name: str = os.getenv('POSTGRES_DB'),
+                 user: str = os.getenv('POSTGRES_USER'),
+                 password: str = os.getenv('POSTGRES_PASSWORD'),
+                 check_tables: bool = True):
         """
         Инициализирует клиент базы данных.
         :param ip:        Адрес бд.
@@ -43,7 +39,6 @@ class Database_Sync():
 
         self.con_status = False
         self.connection = None
-
 
     def connect(self, verbose=False):
         """
@@ -185,7 +180,7 @@ class Database_Sync():
             registration_date timestamp with time zone NOT NULL,
             PRIMARY KEY (id)
         );
-        
+
         ALTER TABLE IF EXISTS public.ovpn_users
             OWNER to {self.user};
         """
@@ -218,14 +213,14 @@ class Database_Sync():
                 ON DELETE CASCADE
                 NOT VALID
         );
-        
+
         ALTER TABLE IF EXISTS public.users
             OWNER to {self.user};
         """
         self.__create__table(sql_request=sql_request, verbose=verbose)
 
-
     """SERVERS========================================================================================================"""
+
     def get_servers_list(self) -> List[Tuple[int, str, str, int, str, str, str, datetime.datetime, int]]:
         sql_request = (f"select id, name, external_ip, external_port, internal_ip, internal_port, "
                        f"internal_subnet, creation_date, monitor_port "
@@ -233,6 +228,24 @@ class Database_Sync():
         cur = self.connection.cursor()
         cur.execute(sql_request)
         result = cur.fetchall()
+        return result
+
+    def get_server_by_id(self, server_id) -> Tuple[int, str, str, int, str, str, str, datetime.datetime, int]:
+        sql_request = (f"select id, name, external_ip, external_port, internal_ip, internal_port, "
+                       f"internal_subnet, creation_date, monitor_port "
+                       f"from public.servers where id={server_id} order by id ASC")
+        cur = self.connection.cursor()
+        cur.execute(sql_request)
+        result = cur.fetchone()
+        return result
+
+    def get_server_by_name(self, name) -> Tuple[int, str, str, int, str, str, str, datetime.datetime, int]:
+        sql_request = (f"select id, name, external_ip, external_port, internal_ip, internal_port, "
+                       f"internal_subnet, creation_date, monitor_port "
+                       f"from public.servers where name='{name}' order by id ASC")
+        cur = self.connection.cursor()
+        cur.execute(sql_request)
+        result = cur.fetchone()
         return result
 
     def add_server(self,
@@ -274,8 +287,8 @@ class Database_Sync():
         result = cur.fetchall()
         return result
 
-
     """USERS========================================================================================================"""
+
     def get_ovpn_users_list(self) -> List[Tuple[int, str, str, str, int, datetime.datetime]]:
         sql_request = (f"select id, nickname, first_name, last_name, telegram_id, registration_date "
                        f"from public.ovpn_users order by id ASC;")
@@ -284,15 +297,32 @@ class Database_Sync():
         result = cur.fetchall()
         return result
 
+    def get_ovpn_user_by_id(self, ovpn_user_id: int) -> Tuple[int, str, str, str, int, datetime.datetime]:
+        sql_request = (f"select id, nickname, first_name, last_name, telegram_id, registration_date "
+                       f"from public.ovpn_users where id={ovpn_user_id} order by id ASC;")
+        cur = self.connection.cursor()
+        cur.execute(sql_request)
+        result = cur.fetchone()
+        return result
+
+    def get_ovpn_user_by_name(self, name: str) -> Tuple[int, str, str, str, int, datetime.datetime]:
+        sql_request = (f"select id, nickname, first_name, last_name, telegram_id, registration_date "
+                       f"from public.ovpn_users where nickname='{name}' order by id ASC;")
+        cur = self.connection.cursor()
+        cur.execute(sql_request)
+        result = cur.fetchone()
+        return result
+
     def add_ovpn_user(self,
                       nickname: str,
                       registration_date: datetime.datetime,
                       first_name: str = None,
                       last_name: str = None,
-                      telegram_id: int = None) -> Tuple[int, str, str, str, int,datetime.datetime]:
-        sql_request = (f"insert into public.ovpn_users (nickname, first_name, last_name, telegram_id, registration_date) "
-                       f"values ('{nickname}', '{first_name}', '{last_name}', '{telegram_id}', '{registration_date}') "
-                       f"RETURNING id, nickname, first_name, last_name, telegram_id, registration_date")
+                      telegram_id: int = None) -> Tuple[int, str, str, str, int, datetime.datetime]:
+        sql_request = (
+            f"insert into public.ovpn_users (nickname, first_name, last_name, telegram_id, registration_date) "
+            f"values ('{nickname}', '{first_name}', '{last_name}', '{telegram_id}', '{registration_date}') "
+            f"RETURNING id, nickname, first_name, last_name, telegram_id, registration_date")
         cur = self.connection.cursor()
         try:
             cur = self.connection.cursor()
@@ -317,8 +347,8 @@ class Database_Sync():
         result = cur.fetchall()
         return result
 
-
     """CERTIFICATES========================================================================================================"""
+
     def get_certificates_list(self) -> List[Tuple[int, int, int, str, str, datetime.datetime, datetime.datetime]]:
         sql_request = (f"select id, server_id, ovpn_user_id, ip, file_path, creation_date, expiration_date "
                        f"from public.certificates order by id ASC;")
@@ -327,17 +357,52 @@ class Database_Sync():
         result = cur.fetchall()
         return result
 
+    def get_certificates_list_for_user(self, ovpn_user_id: int) -> List[Tuple[int, int, int, str, str, datetime.datetime, datetime.datetime]]:
+        sql_request = (f"select id, server_id, ovpn_user_id, ip, file_path, creation_date, expiration_date "
+                       f"from public.certificates where ovpn_user_id={ovpn_user_id} order by id ASC;")
+        cur = self.connection.cursor()
+        cur.execute(sql_request)
+        result = cur.fetchall()
+        return result
+
+    def get_certificates_list_for_server(self, server_id: int) -> List[Tuple[int, int, int, str, str, datetime.datetime, datetime.datetime]]:
+        sql_request = (f"select id, server_id, ovpn_user_id, ip, file_path, creation_date, expiration_date "
+                       f"from public.certificates where server_id={server_id} order by id ASC;")
+        cur = self.connection.cursor()
+        cur.execute(sql_request)
+        result = cur.fetchall()
+        return result
+
+    def get_certificate_by_id(self, certificate_id: int) -> Tuple[
+        int, int, int, str, str, datetime.datetime, datetime.datetime]:
+        sql_request = (f"select id, server_id, ovpn_user_id, ip, file_path, creation_date, expiration_date "
+                       f"from public.certificates where id={certificate_id} order by id ASC;")
+        cur = self.connection.cursor()
+        cur.execute(sql_request)
+        result = cur.fetchone()
+        return result
+
+    def get_certificate_by_server_id_and_user_id_and_ip(self, server_id: int, ovpn_user_id: int, ip: str) -> Tuple[
+        int, int, int, str, str, datetime.datetime, datetime.datetime]:
+        sql_request = (f"select id, server_id, ovpn_user_id, ip, file_path, creation_date, expiration_date "
+                       f"from public.certificates where server_id={server_id} and ovpn_user_id={ovpn_user_id}  and ip='{ip}' "
+                       f"order by id ASC;")
+        cur = self.connection.cursor()
+        cur.execute(sql_request)
+        result = cur.fetchone()
+        return result
+
     def add_certificate(self,
                         server_id: int,
                         ovpn_user_id: int,
                         ip: str,
-                        file_path: str,
+                        file_name: str,
                         creation_date: datetime.datetime,
                         expiration_date: datetime.datetime) -> Tuple[int, int, int, str, str,
-                                                                     datetime.datetime, datetime.datetime]:
+    datetime.datetime, datetime.datetime]:
         sql_request = (f"insert into public.certificates (server_id, ovpn_user_id, ip, file_path, "
                        f"creation_date, expiration_date) "
-                       f"values ('{server_id}', '{ovpn_user_id}', '{ip}', '{file_path}', '{creation_date}', "
+                       f"values ('{server_id}', '{ovpn_user_id}', '{ip}', '{file_name}', '{creation_date}', "
                        f"'{expiration_date}') "
                        f"RETURNING id, server_id, ovpn_user_id, ip, file_path, "
                        f"creation_date, expiration_date;")
@@ -351,7 +416,8 @@ class Database_Sync():
         result = cur.fetchall()
         return result
 
-    def delete_certificate(self, certificate_id: int) -> Tuple[int, int, int, str, str, datetime.datetime, datetime.datetime]:
+    def delete_certificate(self, certificate_id: int) -> Tuple[
+        int, int, int, str, str, datetime.datetime, datetime.datetime]:
         sql_request = (f"DELETE from public.certificates WHERE id = {certificate_id} "
                        f"RETURNING id, server_id, ovpn_user_id, ip, file_path, "
                        f"creation_date, expiration_date;")
@@ -366,19 +432,17 @@ class Database_Sync():
         return result
 
 
-
-
 class Database_Async():
     """
     Класс для взаимодействия с базой данных Postgres.
     """
 
     def __init__(self,
-                 host:          str = os.getenv('POSTGRES_HOST'),
-                 port:          str = os.getenv('POSTGRES_PORT'),
-                 db_name:       str = os.getenv('POSTGRES_DB'),
-                 user:          str = os.getenv('POSTGRES_USER'),
-                 password:      str = os.getenv('POSTGRES_PASSWORD'),
+                 host: str = os.getenv('POSTGRES_HOST'),
+                 port: str = os.getenv('POSTGRES_PORT'),
+                 db_name: str = os.getenv('POSTGRES_DB'),
+                 user: str = os.getenv('POSTGRES_USER'),
+                 password: str = os.getenv('POSTGRES_PASSWORD'),
                  ):
         """
         Инициализирует клиент базы данных.
@@ -396,7 +460,6 @@ class Database_Async():
 
         self.con_status = False
         self.connection = None
-
 
     async def connect(self, verbose=False):
         """
@@ -489,7 +552,7 @@ class Database_Async():
         await self.__drop_table(table_name='certificates', verbose=verbose)
         await self.__drop_table(table_name='ovpn_users', verbose=verbose)
         await self.__drop_table(table_name='servers', verbose=verbose)
-        #await self.create_tables(verbose=verbose)
+        # await self.create_tables(verbose=verbose)
 
     async def __create_servers_table(self, verbose: bool = True):
         """
@@ -533,7 +596,7 @@ class Database_Async():
             registration_date timestamp with time zone NOT NULL,
             PRIMARY KEY (id)
         );
-        
+
         ALTER TABLE IF EXISTS public.ovpn_users
             OWNER to {self.user};
         """
@@ -566,14 +629,14 @@ class Database_Async():
                 ON DELETE CASCADE
                 NOT VALID
         );
-        
+
         ALTER TABLE IF EXISTS public.users
             OWNER to {self.user};
         """
         await self.__create__table(sql_request=sql_request, verbose=verbose)
 
-
     """SERVERS========================================================================================================"""
+
     async def get_servers_list(self) -> List[Tuple[int, str, str, int, str, str, str, datetime.datetime, int, str]]:
         sql_request = (f"select (id, name, external_ip, external_port, internal_ip, internal_port, "
                        f"internal_subnet, creation_date, monitor_port, country) "
@@ -582,15 +645,15 @@ class Database_Async():
         return [dict(record)['row'] for record in records]
 
     async def add_server(self,
-                   name: str,
-                   external_ip: str,
-                   external_port: int,
-                   internal_ip: str,
-                   internal_port: int,
-                   internal_subnet: str,
-                   creation_date: datetime.datetime,
-                   monitor_port: int = 4401,
-                   country: str = "") -> Tuple[int, str, str, int, str, str, str, datetime.datetime, int, str]:
+                         name: str,
+                         external_ip: str,
+                         external_port: int,
+                         internal_ip: str,
+                         internal_port: int,
+                         internal_subnet: str,
+                         creation_date: datetime.datetime,
+                         monitor_port: int = 4401,
+                         country: str = "") -> Tuple[int, str, str, int, str, str, str, datetime.datetime, int, str]:
         sql_request = (f"insert into public.servers (name, external_ip, external_port, internal_ip, "
                        f"internal_port, internal_subnet, creation_date, monitor_port, country) "
                        f"values ('{name}', '{external_ip}', '{external_port}', '{internal_ip}', "
@@ -600,16 +663,16 @@ class Database_Async():
         records = await self.connection.fetch(sql_request)
         return [tuple(record) for record in records][0]
 
-
-    async def delete_server(self, server_id: int) -> Tuple[int, str, str, int, str, str, str, datetime.datetime, int, str]:
+    async def delete_server(self, server_id: int) -> Tuple[
+        int, str, str, int, str, str, str, datetime.datetime, int, str]:
         sql_request = (f"DELETE from public.servers WHERE id = {server_id} "
                        f"RETURNING id, name, external_ip, external_port, internal_ip, "
                        f"internal_port, internal_subnet, creation_date, monitor_port, country;")
         records = await self.connection.fetch(sql_request)
         return [tuple(record) for record in records][0]
 
-
     """USERS========================================================================================================"""
+
     async def get_ovpn_users_list(self) -> List[Tuple[int, str, str, str, int, datetime.datetime]]:
         sql_request = (f"select (id, nickname, first_name, last_name, telegram_id, registration_date) "
                        f"from public.ovpn_users order by id ASC;")
@@ -617,14 +680,15 @@ class Database_Async():
         return [dict(record)['row'] for record in records]
 
     async def add_ovpn_user(self,
-                      nickname: str,
-                      registration_date: datetime.datetime,
-                      first_name: str = None,
-                      last_name: str = None,
-                      telegram_id: int = None) -> Tuple[int, str, str, str, int,datetime.datetime]:
-        sql_request = (f"insert into public.ovpn_users (nickname, first_name, last_name, telegram_id, registration_date) "
-                       f"values ('{nickname}', '{first_name}', '{last_name}', '{telegram_id}', '{registration_date}') "
-                       f"RETURNING id, nickname, first_name, last_name, telegram_id, registration_date")
+                            nickname: str,
+                            registration_date: datetime.datetime,
+                            first_name: str = None,
+                            last_name: str = None,
+                            telegram_id: int = None) -> Tuple[int, str, str, str, int, datetime.datetime]:
+        sql_request = (
+            f"insert into public.ovpn_users (nickname, first_name, last_name, telegram_id, registration_date) "
+            f"values ('{nickname}', '{first_name}', '{last_name}', '{telegram_id}', '{registration_date}') "
+            f"RETURNING id, nickname, first_name, last_name, telegram_id, registration_date")
         records = await self.connection.fetch(sql_request)
         return [tuple(record) for record in records][0]
 
@@ -634,8 +698,8 @@ class Database_Async():
         records = await self.connection.fetch(sql_request)
         return [tuple(record) for record in records][0]
 
-
     """CERTIFICATES========================================================================================================"""
+
     async def get_certificates_list(self) -> List[Tuple[int, int, int, str, str, datetime.datetime, datetime.datetime]]:
         sql_request = (f"select (id, server_id, ovpn_user_id, ip, file_path, creation_date, expiration_date) "
                        f"from public.certificates order by id ASC;")
@@ -643,13 +707,13 @@ class Database_Async():
         return [dict(record)['row'] for record in records]
 
     async def add_certificate(self,
-                        server_id: int,
-                        ovpn_user_id: int,
-                        ip: str,
-                        file_path: str,
-                        creation_date: datetime.datetime,
-                        expiration_date: datetime.datetime) -> Tuple[int, int, int, str, str,
-                                                                     datetime.datetime, datetime.datetime]:
+                              server_id: int,
+                              ovpn_user_id: int,
+                              ip: str,
+                              file_path: str,
+                              creation_date: datetime.datetime,
+                              expiration_date: datetime.datetime) -> Tuple[int, int, int, str, str,
+    datetime.datetime, datetime.datetime]:
         sql_request = (f"insert into public.certificates (server_id, ovpn_user_id, ip, file_path, "
                        f"creation_date, expiration_date) "
                        f"values ('{server_id}', '{ovpn_user_id}', '{ip}', '{file_path}', '{creation_date}', "
@@ -659,7 +723,8 @@ class Database_Async():
         records = await self.connection.fetch(sql_request)
         return [tuple(record) for record in records][0]
 
-    async def delete_certificate(self, certificate_id: int) -> Tuple[int, int, int, str, str, datetime.datetime, datetime.datetime]:
+    async def delete_certificate(self, certificate_id: int) -> Tuple[
+        int, int, int, str, str, datetime.datetime, datetime.datetime]:
         sql_request = (f"DELETE from public.certificates WHERE id = {certificate_id} "
                        f"RETURNING id, server_id, ovpn_user_id, ip, file_path, "
                        f"creation_date, expiration_date;")
@@ -667,11 +732,9 @@ class Database_Async():
         return [tuple(record) for record in records][0]
 
 
-
-
 if __name__ == '__main__':
     async def main():
-        db = Database()
+        db = Database_Async()
         await db.connect()
         await db.create_tables()
         await db.wipe_database()

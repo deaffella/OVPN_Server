@@ -98,9 +98,7 @@ class DBEngine:
             await DBEngine.__create_certificates_table(session=session)
             print('[OK]\t all tables exist!')
         except Exception as e:
-            if verbose:
-                print(f'[ERROR]\tошибка в функции создания таблиц!\n{e}')
-            pass
+            print(f'[ERROR]\tошибка в функции создания таблиц!\n{e}')
 
     @staticmethod
     async def __create_servers_table(session):
@@ -173,6 +171,14 @@ class DBEngine:
                        f"from public.servers order by id ASC")
         records = await session.execute(text(sql_request))
         return [dict(record)['row'] for record in records]
+
+    # @staticmethod
+    # async def get_server_by_id(session, id: int) -> typing.List[typing.Tuple[int, str, str, int, str, str, str, datetime.datetime, int, str]]:
+    #     sql_request = (f"select (id, name, external_ip, external_port, internal_ip, internal_port, "
+    #                    f"internal_subnet, creation_date, monitor_port, country) "
+    #                    f"from public.servers order by id ASC where id={id}")
+    #     records = await session.execute(text(sql_request))
+    #     return [dict(record)['row'] for record in records]
 
     @staticmethod
     async def add_server(session,

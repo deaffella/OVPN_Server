@@ -70,13 +70,19 @@ class DockerClient():
     def container_start(self, container_name: str):
         return self.client.api.start(container=container_name)
 
-    def container_exec(self, container_name: str, cmd: str):
+    def container_exec(self,
+                       container_name: str,
+                       cmd: str,
+                       stdout=True,
+                       stderr=True,
+                       stdin=True,
+                       tty=True):
         exec_id = self.client.api.exec_create(container=container_name,
                                               cmd=cmd,
-                                              stdout=True,
-                                              stderr=True,
-                                              stdin=True,
-                                              tty=True,
+                                              stdout=stdout,
+                                              stderr=stderr,
+                                              stdin=stdin,
+                                              tty=tty,
                                               privileged=False)['Id']
         byte_result = self.client.api.exec_start(exec_id=exec_id, detach=False, tty=True, demux=False)
         return byte_result.decode("utf-8")
@@ -91,7 +97,8 @@ class DockerClient():
                          entrypoint: str = None,
                          environment: Dict[str, int or str] = None,
                          volumes: List[str] = None,
-                         ports: List[int] = None,
+                         internal_port: int  = None,
+                         external_port: int = None,
                          detach: bool = False,
                          tty: bool = False) -> str:
         container = self.client.api.create_container(name=name,
@@ -102,9 +109,14 @@ class DockerClient():
                                                      entrypoint=entrypoint,
                                                      environment=environment,
                                                      volumes=volumes,
-                                                     ports=ports,
+                                                     ports=[(internal_port, 'udp'), ],
                                                      detach=detach,
-                                                     tty=tty)
+                                                     tty=tty,
+                                                     host_config=self.client.api.create_host_config(
+                                                         port_bindings={f'{internal_port}/udp': external_port},
+                                                         restart_policy={'Name': 'always'},
+                                                     cap_add='NET_ADMIN')
+        )
         return container['Id']
 
 
@@ -119,44 +131,93 @@ class OVPN_Docker_Client(DockerClient):
 
     def create_ovpn_server_container(self,
                                      name: str,
-                                     ports: List[Tuple[int, int]] = [(1194, 1194),],
+                                     ext_ip: str,
+                                     internal_port: int = 1194,
+                                     external_port: int = 1194,
+                                     subnet: str = '192.168.42.0', mask: int = 24,
                                      run_after_creation: bool = True):
         image = 'deaffella/ovpn:server-1.0'
         working_dir = '/ovpn'
-        #command = '/ovpn'
         container_id = self.container_create(name=name,
                                              image=image,
                                              hostname=name,
                                              working_dir=working_dir,
-                                             entrypoint='bash',
+                                             # entrypoint='bash',
+                                             entrypoint=f'bash configure_server.sh --ext_ip {ext_ip} --subnet {subnet} --mask {mask}',
+                                             # entrypoint=f'bash -c "cp /ovpn/custom_config/config/* /etc/openvpn/" && ovpn_run > /var/log/test.log',
+                                             # entrypoint=f'ovpn_run > /var/log/test.log || bash configure_server.sh --ext_ip {ext_ip} --subnet {subnet} --mask {mask} > /var/log/test.log',
                                              environment={'TZ': 'Europe/Moscow'},
-                                             ports=ports,
+                                             internal_port=internal_port,
+                                             external_port=external_port,
                                              detach=True,
                                              tty=True)
         if run_after_creation:
             self.container_start(container_name=container_id)
             container_status = self.container_get(container_id=container_id)['status']
             print()
-            print(container_status)
+            print(f'name:\t{name}\t{container_status}')
             print()
 
     def configure_ovpn_server_container(self, name: str, ext_ip: str, subnet: str = '192.168.42.0', mask: int = 24):
-        cmd = f'bash configure_server.sh --ext_ip {ext_ip} --subnet {subnet} --mask {mask}'
+        cmd = f'/bin/bash -c "bash configure_server.sh --ext_ip {ext_ip} --subnet {subnet} --mask {mask} > /var/log/test.log"'
         exec_result = self.container_exec(container_name=name, cmd=cmd)
-        print(exec_result)
+        print('\n', exec_result, '\n')
+        self.container_stop(container_name=name)
+        return exec_result
+
+    def run_ovpn_server_container(self, name: str):
+        self.container_start(container_name=name)
+        return True
+
+    def status_ovpn_server_container(self, name: str):
+        def __parse_server_status(status: str):
+            status_dict = {}
+            status_lines = (status.
+                      removeprefix('OpenVPN CLIENT LIST\r\n').
+                      removesuffix('\r\nEND\r\n')).split('\r\n')
+            status_dict['updated'] = status_lines[0].removeprefix('Updated,')
+            status_dict['clients'] = {}
+
+            routing_table_line_idx = 2
+            for line_idx, line in enumerate(status_lines[2:]):
+                if "ROUTING TABLE" in line:
+                    routing_table_line_idx = line_idx + 2
+                    break
+                common_name, real_address, bytes_received, bytes_sent, connected_since = line.split(',')
+                status_dict['clients'][common_name] = {'common_Name': common_name,
+                                                       'real_address': real_address,
+                                                       'bytes_received': bytes_received,
+                                                       'bytes_sent': bytes_sent,
+                                                       'connected_since': connected_since}
+            for line_idx, line in enumerate(status_lines[2 + routing_table_line_idx:]):
+                if "GLOBAL STATS" in line:
+                    break
+                virtual_address, common_name, real_address, last_ref = line.split(',')
+                status_dict['clients'][common_name].update({'virtual_address': virtual_address,
+                                                            'last_ref': last_ref})
+            return status_dict
+
+        cmd = f'/bin/bash -c "cat /tmp/openvpn-status.log"'
+        exec_result = self.container_exec(container_name=name, cmd=cmd)
+        status = __parse_server_status(status=exec_result)
+        return status
 
     def ovpn_certificate_create(self,
                                 container_name: str,
-                                cert_name: str,
-                                ip: str):
+                                cert_file_name: str,
+                                client_ip: str):
+        cert_name = cert_file_name.removesuffix('.ovpn')
         self.container_exec(container_name=container_name,
-                            cmd=f'easyrsa build-client-full {cert_name} nopass')
+                            cmd=f'/bin/bash -c "easyrsa build-client-full {cert_name} nopass > /var/log/test.log"')
         self.container_exec(container_name=container_name,
-                            cmd=f'bash -c "echo ' + f"'ifconfig-push {ip} 255.255.255.0'" + f' > /etc/openvpn/ccd/{cert_name}"')
+                            cmd=f'bash -c "echo ' + f"'ifconfig-push {client_ip} 255.255.255.0'" + f' > /etc/openvpn/ccd/{cert_name}"')
         self.container_exec(container_name=container_name,
-                            cmd=f'bash -c "ovpn_getclient {cert_name} > ./clients/{cert_name}.ovpn"')
+                            cmd=f'bash -c "printf ' f"'# {client_ip}\n\n'" + f' > ./clients/{cert_file_name}"')
+        self.container_exec(container_name=container_name,
+                            cmd=f'bash -c "ovpn_getclient {cert_name} >> ./clients/{cert_file_name}"')
 
-    def ovpn_certificate_remove(self, container_name: str, cert_name: str):
+    def ovpn_certificate_remove(self, container_name: str, cert_file_name: str):
+        cert_name = cert_file_name.removesuffix('.ovpn')
         self.container_exec(container_name=container_name,
                             cmd=f'cp -f "$EASYRSA_PKI/crl.pem" "$OPENVPN/crl.pem"')
         self.container_exec(container_name=container_name,
@@ -164,30 +225,12 @@ class OVPN_Docker_Client(DockerClient):
         self.container_exec(container_name=container_name,
                             cmd=f'rm /etc/openvpn/ccd/{cert_name}')
         self.container_exec(container_name=container_name,
-                            cmd=f'rm /etc/openvpn/ccd/{cert_name}.ovpn')
+                            cmd=f'rm /etc/openvpn/ccd/{cert_file_name}')
         self.container_exec(container_name=container_name,
-                            cmd=f'rm ./clients/{cert_name}.ovpn')
+                            cmd=f'rm ./clients/{cert_file_name}')
 
-
-
-
-if __name__=='__main__':
-    client = OVPN_Docker_Client()
-
-    # client.containers_get()
-    # print(client.containers_get())
-
-    # ext_ip = 'curl -s http://whatismijnip.nl |cut -d " " -f 5'
-    ext_ip = '188.243.151.68'
-    subnet = '192.168.51.0'
-    name = 'ovpn_server'
-
-    # client.create_ovpn_server_container(name=name)
-    # client.configure_ovpn_server_container(name=name, ext_ip=ext_ip, subnet=subnet)
-    # client.ovpn_certificate_create(container_name=name, cert_name='5', ip='192.168.51.20')
-    # client.ovpn_certificate_remove(container_name=name, cert_name='5')
-
-    client.remove_ovpn_server_container(name=name)
-
-
-
+    def ovpn_certificate_content_get(self, container_name: str, file_name: str) -> str:
+        certificate_content = self.container_exec(container_name=container_name,
+                                                  # cmd=f'bash -c "cat ./clients/{file_name} > /var/log/test.log"')
+                                                  cmd=f'bash -c "cat ./clients/{file_name}"')
+        return certificate_content
