@@ -24,7 +24,7 @@ services:
       - ovpn_server
     container_name: ovpn_monitor
     image: ruimarinho/openvpn-monitor
-    #restart: always
+    restart: always
     ports:
       - "9001:80"
     environment:
